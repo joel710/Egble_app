@@ -97,7 +97,7 @@ class VideoScrollPage extends StatelessWidget {
                       backgroundImage: NetworkImage('https://placehold.co/48x48/fff/000?text=U'),
                     ),
                     SizedBox(width: 10),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         username,
                         style: TextStyle(
@@ -109,7 +109,7 @@ class VideoScrollPage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    SizedBox(width: 2),
+                    SizedBox(width: 8),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 9, vertical: 8),
                       decoration: BoxDecoration(
