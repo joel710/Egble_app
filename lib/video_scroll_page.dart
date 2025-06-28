@@ -91,6 +91,134 @@ class VideoScrollPage extends StatelessWidget {
     );
   }
 
+  void _showCommentsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF23242B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 8, top: 16, bottom: 8),
+                    child: Row(
+                      children: [
+                        Text('217 comments', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Liste des commentaires
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      children: [
+                        _buildComment(
+                          avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+                          username: 'joel453',
+                          text: 'egble do mi?',
+                          
+                        ),
+                        _buildComment(
+                          avatar: 'https://randomuser.me/api/portraits/cats/1.jpg',
+                          username: 'overfit678A032B',
+                          text: ' le model a encore crasher , egblé.',
+                          
+                        ),
+                        _buildComment(
+                          avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
+                          username: 'El_baron',
+                          text: 'aloba gné azé gan🥲🌹',
+                          
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Champ de saisie en bas
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF7F7F7),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Comment',
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFC34E00),
+                            shape: StadiumBorder(),
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          ),
+                          child: Text('Send', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildComment({
+    required String avatar,
+    required String username,
+    required String text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(backgroundImage: NetworkImage(avatar), radius: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(username, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(text, style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Icon(Icons.favorite_border, color: Colors.white54),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,7 +254,7 @@ class VideoScrollPage extends StatelessWidget {
           // Overlay actions à droite
           Positioned(
             right: 16,
-            bottom: 140,
+            bottom: 120,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -137,9 +265,12 @@ class VideoScrollPage extends StatelessWidget {
                 ),
                 SizedBox(height: 24),
                 // Comment
-                _SvgActionButton(
-                  svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"></path></svg>''',
-                  count: comments,
+                GestureDetector(
+                  onTap: () => _showCommentsModal(context),
+                  child: _SvgActionButton(
+                    svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"></path></svg>''',
+                    count: comments,
+                  ),
                 ),
                 SizedBox(height: 24),
                 // Star (favori)
@@ -147,7 +278,6 @@ class VideoScrollPage extends StatelessWidget {
                   svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.42,29.84l85.62,40.55,40.55,85.62A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14L118.42,148.9l47.24-47.25a8,8,0,0,0-11.31-11.31L107.1,137.58,24,98.22l.14,0L216,40Z"></path></svg>''',
                   count: 197,
                 ),
-                
               ],
             ),
           ),
