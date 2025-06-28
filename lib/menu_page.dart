@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'nav_bar.dart';
 import 'profile.dart';
 import 'video_scroll_page.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -83,21 +84,37 @@ class _MenuPageState extends State<MenuPage> {
             SizedBox(height: 8),
             // Grille d'images
             Expanded(
-              child: GridView.count(
+              child: MasonryGridView.count(
                 crossAxisCount: 2,
-                childAspectRatio: 0.95,
-                crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
                 physics: BouncingScrollPhysics(),
                 padding: EdgeInsets.only(bottom: 16),
-                children: [
-                  _buildBattleCard('video 1', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                  _buildBattleCard('video 2', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                  _buildBattleCard('video 3', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                  _buildBattleCard('video 4', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                  _buildBattleCard('video 5', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                  _buildBattleCard('video 6', 'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
-                ],
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  final titles = [
+                    'video 1',
+                    'video 2',
+                    'video 3',
+                    'video 4',
+                    'video 5',
+                    'video 6',
+                  ];
+                  final images = [
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                  ];
+                  // Hauteurs différentes pour l'effet mosaïque
+                  final heights = [180.0, 240.0, 200.0, 220.0, 170.0, 250.0];
+                  return SizedBox(
+                    height: heights[index % heights.length],
+                    child: _buildBattleCard(titles[index], images[index]),
+                  );
+                },
               ),
             ),
           ],
