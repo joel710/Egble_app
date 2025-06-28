@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         centerTitle: true,
       ),
-      backgroundColor: Color(0xFF181A20),
+      backgroundColor: Color(0xFF191919),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -43,6 +43,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 50,
                   backgroundImage: AssetImage('assets/images/profile.jpg'),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Color(0xFFC34E00), width: 2),
+                    ),
+                  ),
                 ),
                 SizedBox(height: 10),
                 Text(

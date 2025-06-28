@@ -20,10 +20,81 @@ class VideoScrollPage extends StatelessWidget {
     required this.shares,
   }) : super(key: key);
 
+  void _showCommentInput(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Champ de saisie + bouton Send
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Comment',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFC34E00), // orange soft
+                        shape: StadiumBorder(),
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      ),
+                      child: Text('Send', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                // Rangée d'icônes
+                Row(
+                  children: [
+                    Icon(Icons.alternate_email, color: Colors.grey[700]),
+                    SizedBox(width: 16),
+                    Icon(Icons.emoji_emotions_outlined, color: Colors.grey[700]),
+                    SizedBox(width: 16),
+                    Icon(Icons.image_outlined, color: Colors.grey[700]),
+                    SizedBox(width: 16),
+                    Icon(Icons.add_circle_outline, color: Colors.grey[700]),
+                    SizedBox(width: 16),
+                    // Quelques emojis custom (remplace par tes assets si besoin)
+                    Text('🥲', style: TextStyle(fontSize: 24)),
+                    Text('🥰', style: TextStyle(fontSize: 24)),
+                    Text('😱', style: TextStyle(fontSize: 24)),
+                    Text('😘', style: TextStyle(fontSize: 24)),
+                    Text('😊', style: TextStyle(fontSize: 24)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF181A20),
+      backgroundColor: Color(0xFF191919),
       body: Stack(
         children: [
           // Vidéo fictive (remplacer par un vrai player si besoin)
@@ -93,8 +164,14 @@ class VideoScrollPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     CircleAvatar(
-                      radius: 20,
+                      radius: 24,
                       backgroundImage: NetworkImage('https://placehold.co/48x48/fff/000?text=U'),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Color(0xFFC34E00), width: 2),
+                        ),
+                      ),
                     ),
                     SizedBox(width: 10),
                     Flexible(
@@ -156,32 +233,20 @@ class VideoScrollPage extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: Container(
-              margin: EdgeInsets.only(left: 8, right: 8, bottom: 8),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFF23242B),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                      decoration: InputDecoration(
-                        hintText: 'Comment',
-                        hintStyle: TextStyle(color: Colors.white54, fontSize: 18),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 8),
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.alternate_email, color: Colors.white54, size: 28),
-                  SizedBox(width: 12),
-                  Icon(Icons.emoji_emotions_outlined, color: Colors.white54, size: 28),
-                  
-                ],
+            child: GestureDetector(
+              onTap: () => _showCommentInput(context),
+              child: Container(
+                margin: EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Color(0xFF23242B),
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Comment',
+                  style: TextStyle(color: Colors.white54, fontSize: 18),
+                ),
               ),
             ),
           ),
