@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'nav_bar.dart';
 import 'profile.dart';
+import 'video_scroll_page.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -110,18 +111,35 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Widget _buildBattleCard(String title, String imageUrl) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoScrollPage(
+              username: 'utilisateur_togo',
+              description: title,
+              hashtags: '#Togo #MiabéTiktok #DanseLoko ✨',
+              likes: 2300,
+              comments: 123,
+              shares: 45,
+            ),
           ),
-        ),
-        SizedBox(height: 4),
-        Text(title, style: TextStyle(color: Colors.white)),
-      ],
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity),
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(title, style: TextStyle(color: Colors.white)),
+        ],
+      ),
     );
   }
 }
