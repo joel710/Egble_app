@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'nav_bar.dart';
+import 'profile.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -14,8 +15,20 @@ class _MenuPageState extends State<MenuPage> {
   void _onNavBarTap(int index) {
     setState(() {
       _selectedIndex = index;
-      // Ici tu pourras gérer la navigation entre les différentes pages
     });
+    if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfileScreen(
+            username: 'genz_user',
+            bio: 'Juste un dev qui code son TikTok parce que TikTok est coupé. #NoTikTokNoCry',
+            abonnes: 42,
+            isCurrentUser: true,
+          ),
+        ),
+      );
+    }
   }
 
   @override
