@@ -13,6 +13,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // Ajout pour le web
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});
@@ -23,6 +26,7 @@ class UploadPage extends StatefulWidget {
 
 class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   File? _selectedVideo;
+  XFile? _selectedVideoWeb;
   final ImagePicker _picker = ImagePicker();
   VideoPlayerController? _videoController;
   bool _isPlaying = false;
@@ -64,7 +68,8 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
         final XFile? video = await _picker.pickVideo(source: source);
         if (video != null) {
           setState(() {
-            _selectedVideo = null; // On ne peut pas utiliser File sur web
+            _selectedVideo = null;
+            _selectedVideoWeb = video;
           });
           _initializeVideoPlayerWeb(video);
         }
@@ -75,8 +80,9 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
           if (video != null) {
             setState(() {
               _selectedVideo = File(video.path);
-              _initializeVideoPlayer();
+              _selectedVideoWeb = null;
             });
+            _initializeVideoPlayer();
           }
         } else {
           _showPermissionDialog();
@@ -85,7 +91,7 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: [31m${e.toString()}[0m'),
+          content: Text('Erreur: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -400,6 +406,7 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
     // Vérifie si une vidéo est sélectionnée (mobile) ou si le contrôleur est initialisé (web)
     bool hasVideo =
         _selectedVideo != null ||
+        _selectedVideoWeb != null ||
         (_videoController != null && _videoController!.value.isInitialized);
 
     if (!hasVideo || _caption == null || _caption!.isEmpty) {
@@ -418,15 +425,29 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       if (user == null) throw Exception('Utilisateur non connecté.');
 
       String? url;
-      if (kIsWeb && _selectedVideo == null) {
-        // Sur le web, on doit récupérer le fichier depuis le contrôleur
-        // Pour l'instant, on affiche un message d'info
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Upload sur web en cours de développement...'),
-          ),
+      if (kIsWeb && _selectedVideoWeb != null) {
+        // Sur le web, on utilise VideoService avec un fichier temporaire
+        final bytes = await _selectedVideoWeb!.readAsBytes();
+        final fileName = _selectedVideoWeb!.name;
+
+        // Vérification taille
+        if (bytes.length > 50 * 1024 * 1024) {
+          throw Exception('La vidéo dépasse 50 Mo.');
+        }
+
+        // Créer un fichier temporaire pour l'upload
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/$fileName');
+        await tempFile.writeAsBytes(bytes);
+
+        url = await VideoService.uploadVideo(
+          file: tempFile,
+          caption: _caption!,
+          user: user,
         );
-        return;
+
+        // Nettoyer le fichier temporaire
+        await tempFile.delete();
       } else {
         url = await VideoService.uploadVideo(
           file: _selectedVideo!,
@@ -440,6 +461,7 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       ).showSnackBar(SnackBar(content: Text('Vidéo uploadée avec succès !')));
       setState(() {
         _selectedVideo = null;
+        _selectedVideoWeb = null;
         _caption = null;
         _videoController?.dispose();
         _videoController = null;
@@ -616,6 +638,7 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                     ? null
                     : () {
                       if (_selectedVideo != null ||
+                          _selectedVideoWeb != null ||
                           (_videoController != null &&
                               _videoController!.value.isInitialized)) {
                         _showCaptionDialog();
