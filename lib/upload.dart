@@ -9,6 +9,10 @@ import 'login_page.dart';
 import 'register_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/video_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// Ajout pour le web
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});
@@ -17,8 +21,7 @@ class UploadPage extends StatefulWidget {
   State<UploadPage> createState() => _UploadPageState();
 }
 
-class _UploadPageState extends State<UploadPage>
-    with TickerProviderStateMixin {
+class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   File? _selectedVideo;
   final ImagePicker _picker = ImagePicker();
   VideoPlayerController? _videoController;
@@ -57,22 +60,32 @@ class _UploadPageState extends State<UploadPage>
 
   Future<void> _pickVideo(ImageSource source) async {
     try {
-      final status = await Permission.storage.request();
-      if (status.isGranted || status.isLimited) {
+      if (kIsWeb) {
         final XFile? video = await _picker.pickVideo(source: source);
         if (video != null) {
           setState(() {
-            _selectedVideo = File(video.path);
-            _initializeVideoPlayer();
+            _selectedVideo = null; // On ne peut pas utiliser File sur web
           });
+          _initializeVideoPlayerWeb(video);
         }
       } else {
-        _showPermissionDialog();
+        final status = await Permission.storage.request();
+        if (status.isGranted || status.isLimited) {
+          final XFile? video = await _picker.pickVideo(source: source);
+          if (video != null) {
+            setState(() {
+              _selectedVideo = File(video.path);
+              _initializeVideoPlayer();
+            });
+          }
+        } else {
+          _showPermissionDialog();
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
+          content: Text('Erreur: [31m${e.toString()}[0m'),
           backgroundColor: Colors.red,
         ),
       );
@@ -90,6 +103,21 @@ class _UploadPageState extends State<UploadPage>
           });
         });
     }
+  }
+
+  void _initializeVideoPlayerWeb(XFile video) async {
+    // Sur le web, VideoPlayerController.networkFromFile ne marche pas, il faut utiliser un blob
+    final bytes = await video.readAsBytes();
+    final blob = html.Blob([bytes]);
+    final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+    _videoController = VideoPlayerController.network(blobUrl)
+      ..initialize().then((_) {
+        setState(() {});
+        _videoController!.setLooping(true);
+        _videoController!.addListener(() {
+          setState(() {});
+        });
+      });
   }
 
   void _toggleVideoPlayback() {
@@ -323,45 +351,62 @@ class _UploadPageState extends State<UploadPage>
     final captionController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('Ajouter une légende', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: captionController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Ex: Ma vidéo TikTok',
-            hintStyle: TextStyle(color: Colors.grey),
-            border: InputBorder.none,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'Ajouter une légende',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: TextField(
+              controller: captionController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Ex: Ma vidéo TikTok',
+                hintStyle: TextStyle(color: Colors.grey),
+                border: InputBorder.none,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _caption = captionController.text;
+                  });
+                  Navigator.pop(context);
+                  _handleUpload();
+                },
+                child: const Text(
+                  'Valider',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler', style: TextStyle(color: Colors.red)),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _caption = captionController.text;
-              });
-              Navigator.pop(context);
-              _handleUpload();
-            },
-            child: const Text('Valider', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
   }
 
   Future<void> _handleUpload() async {
-    if (_selectedVideo == null || _caption == null || _caption!.isEmpty) {
+    // Vérifie si une vidéo est sélectionnée (mobile) ou si le contrôleur est initialisé (web)
+    bool hasVideo =
+        _selectedVideo != null ||
+        (_videoController != null && _videoController!.value.isInitialized);
+
+    if (!hasVideo || _caption == null || _caption!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sélectionne une vidéo et ajoute une légende.')),
+        const SnackBar(
+          content: Text('Sélectionne une vidéo et ajoute une légende.'),
+        ),
       );
       return;
     }
@@ -371,22 +416,38 @@ class _UploadPageState extends State<UploadPage>
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté.');
-      final url = await VideoService.uploadVideo(
-        file: _selectedVideo!,
-        caption: _caption!,
-        user: user,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vidéo uploadée avec succès !')),
-      );
+
+      String? url;
+      if (kIsWeb && _selectedVideo == null) {
+        // Sur le web, on doit récupérer le fichier depuis le contrôleur
+        // Pour l'instant, on affiche un message d'info
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Upload sur web en cours de développement...'),
+          ),
+        );
+        return;
+      } else {
+        url = await VideoService.uploadVideo(
+          file: _selectedVideo!,
+          caption: _caption!,
+          user: user,
+        );
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Vidéo uploadée avec succès !')));
       setState(() {
         _selectedVideo = null;
         _caption = null;
+        _videoController?.dispose();
+        _videoController = null;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : ${e.toString()}')));
     } finally {
       setState(() {
         _isUploading = false;
@@ -416,121 +477,193 @@ class _UploadPageState extends State<UploadPage>
       height: 80,
       color: const Color(0xFF191919),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
+      child: Row(
         children: [
-          // Time indicators
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Timeline
+          Expanded(
+            child: Column(
               children: [
-                Text(
-                  _formatDuration(position.inSeconds.toDouble()),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                // Time indicators
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDuration(position.inSeconds.toDouble()),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        _formatDuration(duration.inSeconds.toDouble()),
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  _formatDuration(duration.inSeconds.toDouble()),
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(height: 12),
+
+                // Modern timeline
+                Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      children: [
+                        // Background track
+                        Container(
+                          width: double.infinity,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+
+                        // Progress track
+                        FractionallySizedBox(
+                          widthFactor: progress.clamp(0.0, 1.0),
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFC34E00).withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+
+                        // Timeline slider
+                        Positioned.fill(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 40,
+                              thumbShape: const CustomThumbShape(),
+                              overlayShape: SliderComponentShape.noOverlay,
+                              activeTrackColor: Colors.transparent,
+                              inactiveTrackColor: Colors.transparent,
+                              thumbColor: const Color(0xFFC34E00),
+                            ),
+                            child: Slider(
+                              value: position.inSeconds.toDouble(),
+                              min: 0.0,
+                              max: duration.inSeconds.toDouble(),
+                              onChanged: (value) {
+                                _videoController!.seekTo(
+                                  Duration(seconds: value.toInt()),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+
+                        // Waveform simulation (decorative)
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 15,
+                            ),
+                            child: Row(
+                              children: List.generate(50, (index) {
+                                final height = (index % 5 + 1) * 2.0;
+                                final isActive = index / 50 <= progress;
+                                return Container(
+                                  width: 2,
+                                  height: height,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isActive
+                                            ? const Color(
+                                              0xFFC34E00,
+                                            ).withOpacity(0.8)
+                                            : Colors.grey[700]?.withOpacity(
+                                              0.3,
+                                            ),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
 
-          // Modern timeline
-          Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  // Background track
-                  Container(
-                    width: double.infinity,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-
-                  // Progress track
-                  FractionallySizedBox(
-                    widthFactor: progress.clamp(0.0, 1.0),
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFC34E00).withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-
-                  // Timeline slider
-                  Positioned.fill(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 40,
-                        thumbShape: const CustomThumbShape(),
-                        overlayShape: SliderComponentShape.noOverlay,
-                        activeTrackColor: Colors.transparent,
-                        inactiveTrackColor: Colors.transparent,
-                        thumbColor: const Color(0xFFC34E00),
-                      ),
-                      child: Slider(
-                        value: position.inSeconds.toDouble(),
-                        min: 0.0,
-                        max: duration.inSeconds.toDouble(),
-                        onChanged: (value) {
-                          _videoController!.seekTo(
-                            Duration(seconds: value.toInt()),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // Waveform simulation (decorative)
-                  Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 15,
-                      ),
-                      child: Row(
-                        children: List.generate(50, (index) {
-                          final height = (index % 5 + 1) * 2.0;
-                          final isActive = index / 50 <= progress;
-                          return Container(
-                            width: 2,
-                            height: height,
-                            margin: const EdgeInsets.symmetric(horizontal: 1),
-                            decoration: BoxDecoration(
-                              color:
-                                  isActive
-                                      ? const Color(0xFFC34E00).withOpacity(0.8)
-                                      : Colors.grey[700]?.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(1),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
+          // Bouton de publication stylé
+          const SizedBox(width: 16),
+          GestureDetector(
+            onTap:
+                _isUploading
+                    ? null
+                    : () {
+                      if (_selectedVideo != null ||
+                          (_videoController != null &&
+                              _videoController!.value.isInitialized)) {
+                        _showCaptionDialog();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Sélectionne une vidéo d\'abord.'),
+                          ),
+                        );
+                      }
+                    },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFFC34E00), const Color(0xFFE67E22)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC34E00).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
+              child:
+                  _isUploading
+                      ? const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                      : const Center(
+                        child: Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
             ),
           ),
         ],
@@ -628,21 +761,6 @@ class _UploadPageState extends State<UploadPage>
                           ),
                         ),
                         const Spacer(),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.send,
-                            color: Color(0xFFC34E00),
-                          ),
-                          onPressed: _isUploading ? null : () {
-                            if (_selectedVideo != null) {
-                              _showCaptionDialog();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Sélectionne une vidéo d\'abord.')),
-                              );
-                            }
-                          },
-                        ),
                       ],
                     ),
                   ),
@@ -692,25 +810,28 @@ class _UploadPageState extends State<UploadPage>
                     !_isPlaying &&
                     !_isTextMode)
                   Center(
-                    child: AnimatedBuilder(
-                      animation: _playButtonController,
-                      builder: (context, child) {
-                        return Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.play_arrow,
-                            color: Colors.white.withOpacity(
-                              1.0 - _playButtonController.value,
+                    child: GestureDetector(
+                      onTap: _toggleVideoPlayback,
+                      child: AnimatedBuilder(
+                        animation: _playButtonController,
+                        builder: (context, child) {
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
                             ),
-                            size: 50,
-                          ),
-                        );
-                      },
+                            child: Icon(
+                              Icons.play_arrow,
+                              color: Colors.white.withOpacity(
+                                1.0 - _playButtonController.value,
+                              ),
+                              size: 50,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
 
