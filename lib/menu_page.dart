@@ -3,6 +3,7 @@ import 'nav_bar.dart';
 import 'profile.dart';
 import 'video_scroll_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'upload.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -18,7 +19,12 @@ class _MenuPageState extends State<MenuPage> {
     setState(() {
       _selectedIndex = index;
     });
-    if (index == 2) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => UploadPage()),
+      );
+    } else if (index == 2) {
       Navigator.push(
         context,
         MaterialPageRoute(

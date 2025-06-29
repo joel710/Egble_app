@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "827166649425",
+    "project_id": "egble-app",
+    "storage_bucket": "egble-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:827166649425:android:1fd216c2f4fe066a369c70",
+        "android_client_info": {
+          "package_name": "com.example.egble_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFkf7EGPXeD49K1e4wuXVqqTtfHIriBMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

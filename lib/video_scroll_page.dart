@@ -76,7 +76,7 @@ class VideoScrollPage extends StatelessWidget {
                     Icon(Icons.add_circle_outline, color: Colors.grey[700]),
                     SizedBox(width: 16),
                     // Quelques emojis custom (remplace par tes assets si besoin)
-                    Text('🥲', style: TextStyle(fontSize: 24)),
+                    
                     Text('🥰', style: TextStyle(fontSize: 24)),
                     Text('😱', style: TextStyle(fontSize: 24)),
                     Text('😘', style: TextStyle(fontSize: 24)),
