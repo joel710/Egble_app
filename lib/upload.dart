@@ -7,6 +7,8 @@ import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'welcome_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/video_service.dart';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});
@@ -28,6 +30,9 @@ class _UploadPageState extends State<UploadPage>
   // Text overlay variables
   List<TextOverlay> _textOverlays = [];
   bool _isTextMode = false;
+
+  String? _caption;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -314,6 +319,81 @@ class _UploadPageState extends State<UploadPage>
     );
   }
 
+  void _showCaptionDialog() {
+    final captionController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Ajouter une légende', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: captionController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Ex: Ma vidéo TikTok',
+            hintStyle: TextStyle(color: Colors.grey),
+            border: InputBorder.none,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _caption = captionController.text;
+              });
+              Navigator.pop(context);
+              _handleUpload();
+            },
+            child: const Text('Valider', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleUpload() async {
+    if (_selectedVideo == null || _caption == null || _caption!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sélectionne une vidéo et ajoute une légende.')),
+      );
+      return;
+    }
+    setState(() {
+      _isUploading = true;
+    });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Utilisateur non connecté.');
+      final url = await VideoService.uploadVideo(
+        file: _selectedVideo!,
+        caption: _caption!,
+        user: user,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vidéo uploadée avec succès !')),
+      );
+      setState(() {
+        _selectedVideo = null;
+        _caption = null;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
   Widget _buildModernTimeline() {
     if (_videoController == null || !_videoController!.value.isInitialized) {
       return Container(
@@ -553,7 +633,15 @@ class _UploadPageState extends State<UploadPage>
                             Icons.send,
                             color: Color(0xFFC34E00),
                           ),
-                          onPressed: () {},
+                          onPressed: _isUploading ? null : () {
+                            if (_selectedVideo != null) {
+                              _showCaptionDialog();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Sélectionne une vidéo d\'abord.')),
+                              );
+                            }
+                          },
                         ),
                       ],
                     ),

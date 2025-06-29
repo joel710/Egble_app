@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'nav_bar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/profile_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String username;
@@ -23,15 +28,208 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool isFollowing = false;
+  File? _newProfilePic;
+  String? _profilePicUrl;
+  bool _isUploadingPic = false;
+
+  Map<String, dynamic>? _userData;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    setState(() { _isLoadingProfile = true; });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Utilisateur non connecté.');
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        setState(() {
+          _userData = doc.data();
+          _profilePicUrl = _userData?['profilePic'];
+        });
+      }
+    } catch (e) {
+      // Optionnel : afficher une erreur
+    } finally {
+      setState(() { _isLoadingProfile = false; });
+    }
+  }
+
+  Future<void> _pickAndUploadProfilePic() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null) {
+      setState(() { _isUploadingPic = true; });
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception('Utilisateur non connecté.');
+        final file = File(picked.path);
+        final url = await ProfileService.uploadProfilePicture(file: file, user: user);
+        setState(() {
+          _profilePicUrl = url;
+          _newProfilePic = file;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Photo de profil mise à jour !')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : ${e.toString()}')),
+        );
+      } finally {
+        setState(() { _isUploadingPic = false; });
+      }
+    }
+  }
+
+  void _showEditProfileModal() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF23242B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ListView(
+                controller: scrollController,
+                children: [
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 48,
+                          backgroundImage: _newProfilePic != null
+                              ? FileImage(_newProfilePic!)
+                              : (_profilePicUrl != null
+                                  ? NetworkImage(_profilePicUrl!)
+                                  : AssetImage('assets/images/profile.jpg') as ImageProvider),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _isUploadingPic ? null : _pickAndUploadProfilePic,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Color(0xFFC34E00),
+                                shape: BoxShape.circle,
+                              ),
+                              padding: EdgeInsets.all(8),
+                              child: _isUploadingPic
+                                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : Icon(Icons.edit, color: Colors.white, size: 20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  TextFormField(
+                    initialValue: widget.username,
+                    decoration: InputDecoration(
+                      labelText: 'Nom',
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Color(0xFF262A34),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: Icon(Icons.person, color: Colors.grey[400]),
+                    ),
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    initialValue: widget.bio,
+                    decoration: InputDecoration(
+                      labelText: 'Bio',
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Color(0xFF262A34),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: Icon(Icons.info_outline, color: Colors.grey[400]),
+                    ),
+                    style: TextStyle(color: Colors.white),
+                    maxLines: 2,
+                  ),
+                  SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // TODO: Enregistrer les modifications
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFC34E00),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Enregistrer',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingProfile) {
+      return Scaffold(
+        backgroundColor: Color(0xFF191919),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFC34E00))),
+      );
+    }
+    final username = _userData?['username'] ?? 'Utilisateur';
+    final bio = _userData?['bio'] ?? 'Aucune bio';
+    final profilePic = _profilePicUrl ?? _userData?['profilePic'] ?? 'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff';
+    final abonnes = _userData?['abonnes'] ?? 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isCurrentUser ? 'Mon Profil' : 'Profil de ${widget.username}',
+          widget.isCurrentUser ? 'Mon Profil' : 'Profil de $username',
         ),
         centerTitle: true,
+        actions: widget.isCurrentUser
+            ? [
+                IconButton(
+                  icon: Icon(Icons.edit, color: Color(0xFFC34E00)),
+                  onPressed: _showEditProfileModal,
+                ),
+              ]
+            : null,
       ),
       backgroundColor: Color(0xFF191919),
       body: CustomScrollView(
@@ -42,7 +240,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(height: 20),
                 CircleAvatar(
                   radius: 50,
-                  backgroundImage: AssetImage('assets/images/profile.jpg'),
+                  backgroundImage: _newProfilePic != null
+                      ? FileImage(_newProfilePic!)
+                      : NetworkImage(profilePic) as ImageProvider,
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -52,11 +252,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 SizedBox(height: 10),
                 Text(
-                  widget.username,
+                  username,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 Text(
-                  widget.bio,
+                  bio.isEmpty ? 'Aucune bio' : bio,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey[400]),
                 ),
@@ -64,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    StatColumn(label: 'Abonnés', count: widget.abonnes),
+                    StatColumn(label: 'Abonnés', count: abonnes),
                     SizedBox(width: 20),
                   ],
                 ),

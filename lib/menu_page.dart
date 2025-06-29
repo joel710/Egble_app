@@ -4,6 +4,8 @@ import 'profile.dart';
 import 'video_scroll_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'upload.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -14,6 +16,25 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   int _selectedIndex = 0;
+  List<Map<String, dynamic>> _videos = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVideos();
+  }
+
+  Future<void> _fetchVideos() async {
+    setState(() { _isLoading = true; });
+    final snapshot = await FirebaseFirestore.instance.collection('videos').get();
+    final videos = snapshot.docs.map((doc) => doc.data()).toList();
+    videos.shuffle(Random());
+    setState(() {
+      _videos = List<Map<String, dynamic>>.from(videos);
+      _isLoading = false;
+    });
+  }
 
   void _onNavBarTap(int index) {
     setState(() {
@@ -90,38 +111,27 @@ class _MenuPageState extends State<MenuPage> {
             SizedBox(height: 8),
             // Grille d'images
             Expanded(
-              child: MasonryGridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                physics: BouncingScrollPhysics(),
-                padding: EdgeInsets.only(bottom: 16),
-                itemCount: 6,
-                itemBuilder: (context, index) {
-                  final titles = [
-                    'video 1',
-                    'video 2',
-                    'video 3',
-                    'video 4',
-                    'video 5',
-                    'video 6',
-                  ];
-                  final images = [
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    'https://images.unsplash.com/photo-1750863491112-3c3e305c041d?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                  ];
-                  // Hauteurs différentes pour l'effet mosaïque
-                  final heights = [180.0, 240.0, 200.0, 220.0, 170.0, 250.0];
-                  return SizedBox(
-                    height: heights[index % heights.length],
-                    child: _buildBattleCard(titles[index], images[index]),
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator(color: Color(0xFFC34E00)))
+                  : _videos.isEmpty
+                      ? Center(child: Text('Aucune vidéo disponible', style: TextStyle(color: Colors.white54)))
+                      : MasonryGridView.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          physics: BouncingScrollPhysics(),
+                          padding: EdgeInsets.only(bottom: 16),
+                          itemCount: _videos.length,
+                          itemBuilder: (context, index) {
+                            final video = _videos[index];
+                            final title = video['caption'] ?? 'Vidéo';
+                            final thumbnail = video['thumbnailUrl'] ?? 'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
+                            return SizedBox(
+                              height: 200 + Random().nextInt(60),
+                              child: _buildBattleCard(title, thumbnail, video),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
@@ -133,19 +143,20 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildBattleCard(String title, String imageUrl) {
+  Widget _buildBattleCard(String title, String imageUrl, Map<String, dynamic> video) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => VideoScrollPage(
-              username: 'utilisateur_togo',
-              description: title,
-              hashtags: '#Togo #MiabéTiktok #DanseLoko ✨',
-              likes: 2300,
-              comments: 123,
-              shares: 45,
+              username: video['username'] ?? 'utilisateur',
+              description: video['caption'] ?? '',
+              hashtags: '',
+              likes: video['likesCount'] ?? 0,
+              comments: video['commentsCount'] ?? 0,
+              shares: 0,
+              // Tu pourras ajouter d'autres champs ici
             ),
           ),
         );

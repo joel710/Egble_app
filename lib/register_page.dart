@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'privacy_policy_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 const double kPadding = 24;
 
@@ -281,10 +282,20 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       try {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        // Enregistrement Firestore
+        await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+          'username': _nameController.text.trim(),
+          'bio': '',
+          'profilePic': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
+          'abonnes': 0,
+          'abonnesCount': 0,
+          'videosCount': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
         // Inscription réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
       } on FirebaseAuthException catch (e) {
