@@ -1,24 +1,70 @@
 import 'package:flutter/material.dart';
 import 'nav_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:video_player/video_player.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class VideoScrollPage extends StatelessWidget {
-  final String username;
-  final String description;
-  final String hashtags;
-  final int likes;
-  final int comments;
-  final int shares;
+class VideoScrollPage extends StatefulWidget {
+  // On peut passer l'index initial si besoin
+  final int initialIndex;
+  const VideoScrollPage({Key? key, this.initialIndex = 0}) : super(key: key);
 
-  const VideoScrollPage({
-    Key? key,
-    required this.username,
-    required this.description,
-    required this.hashtags,
-    required this.likes,
-    required this.comments,
-    required this.shares,
-  }) : super(key: key);
+  @override
+  State<VideoScrollPage> createState() => _VideoScrollPageState();
+}
+
+class _VideoScrollPageState extends State<VideoScrollPage> {
+  List<Map<String, dynamic>> _videos = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  int _pageSize = 8;
+  DocumentSnapshot? _lastDoc;
+  PageController? _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _fetchVideos();
+  }
+
+  Future<void> _fetchVideos({bool loadMore = false}) async {
+    if (loadMore)
+      setState(() {
+        _isLoadingMore = true;
+      });
+    else
+      setState(() {
+        _isLoading = true;
+      });
+    Query query = FirebaseFirestore.instance
+        .collection('videos')
+        .orderBy('createdAt', descending: true)
+        .limit(_pageSize);
+    if (_lastDoc != null) {
+      query = query.startAfterDocument(_lastDoc!);
+    }
+    final snapshot = await query.get();
+    if (snapshot.docs.isNotEmpty) {
+      _lastDoc = snapshot.docs.last;
+      setState(() {
+        _videos.addAll(
+          snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>),
+        );
+      });
+    }
+    setState(() {
+      _isLoading = false;
+      _isLoadingMore = false;
+    });
+  }
+
+  void _onPageChanged(int index) {
+    if (index >= _videos.length - 2 && !_isLoadingMore) {
+      _fetchVideos(loadMore: true);
+    }
+  }
 
   void _showCommentInput(BuildContext context) {
     showModalBottomSheet(
@@ -57,9 +103,15 @@ class VideoScrollPage extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFC34E00), // orange soft
                         shape: StadiumBorder(),
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
+                        ),
                       ),
-                      child: Text('Send', style: TextStyle(color: Colors.white)),
+                      child: Text(
+                        'Send',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -69,14 +121,17 @@ class VideoScrollPage extends StatelessWidget {
                   children: [
                     Icon(Icons.alternate_email, color: Colors.grey[700]),
                     SizedBox(width: 16),
-                    Icon(Icons.emoji_emotions_outlined, color: Colors.grey[700]),
+                    Icon(
+                      Icons.emoji_emotions_outlined,
+                      color: Colors.grey[700],
+                    ),
                     SizedBox(width: 16),
                     Icon(Icons.image_outlined, color: Colors.grey[700]),
                     SizedBox(width: 16),
                     Icon(Icons.add_circle_outline, color: Colors.grey[700]),
                     SizedBox(width: 16),
+
                     // Quelques emojis custom (remplace par tes assets si besoin)
-                    
                     Text('🥰', style: TextStyle(fontSize: 24)),
                     Text('😱', style: TextStyle(fontSize: 24)),
                     Text('😘', style: TextStyle(fontSize: 24)),
@@ -111,10 +166,22 @@ class VideoScrollPage extends StatelessWidget {
                 children: [
                   // Header
                   Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 8, top: 16, bottom: 8),
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 8,
+                      top: 16,
+                      bottom: 8,
+                    ),
                     child: Row(
                       children: [
-                        Text('217 comments', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                        Text(
+                          '217 comments',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
                         Spacer(),
                         IconButton(
                           icon: Icon(Icons.close, color: Colors.white),
@@ -129,22 +196,22 @@ class VideoScrollPage extends StatelessWidget {
                       controller: scrollController,
                       children: [
                         _buildComment(
-                          avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+                          avatar:
+                              'https://randomuser.me/api/portraits/men/1.jpg',
                           username: 'joel453',
                           text: 'egble do mi?',
-                          
                         ),
                         _buildComment(
-                          avatar: 'https://randomuser.me/api/portraits/cats/1.jpg',
+                          avatar:
+                              'https://randomuser.me/api/portraits/cats/1.jpg',
                           username: 'overfit678A032B',
                           text: ' le model a encore crasher , egblé.',
-                          
                         ),
                         _buildComment(
-                          avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
+                          avatar:
+                              'https://randomuser.me/api/portraits/men/2.jpg',
                           username: 'El_baron',
                           text: 'aloba gné azé gan🥲🌹',
-                          
                         ),
                       ],
                     ),
@@ -154,7 +221,9 @@ class VideoScrollPage extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Color(0xFFF7F7F7),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -172,9 +241,15 @@ class VideoScrollPage extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFFC34E00),
                             shape: StadiumBorder(),
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 10,
+                            ),
                           ),
-                          child: Text('Send', style: TextStyle(color: Colors.white)),
+                          child: Text(
+                            'Send',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                     ),
@@ -204,15 +279,19 @@ class VideoScrollPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(username, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(
+                  username,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 Text(text, style: TextStyle(color: Colors.white)),
               ],
             ),
           ),
           Column(
-            children: [
-              Icon(Icons.favorite_border, color: Colors.white54),
-            ],
+            children: [Icon(Icons.favorite_border, color: Colors.white54)],
           ),
         ],
       ),
@@ -221,167 +300,468 @@ class VideoScrollPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading && _videos.isEmpty) {
+      return Scaffold(
+        backgroundColor: Color(0xFF191919),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFC34E00)),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Color(0xFF191919),
-      body: Stack(
-        children: [
-          // Vidéo fictive (remplacer par un vrai player si besoin)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Color(0xFF181A20),
-            child: Center(
-              child: Text(
-                description,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+      body: PageView.builder(
+        controller: _pageController,
+        scrollDirection: Axis.vertical,
+        itemCount: _videos.length + (_isLoadingMore ? 1 : 0),
+        onPageChanged: _onPageChanged,
+        itemBuilder: (context, index) {
+          if (index >= _videos.length) {
+            return Center(
+              child: CircularProgressIndicator(color: Color(0xFFC34E00)),
+            );
+          }
+          final video = _videos[index];
+          return _VideoPlayerFeedItem(video: video);
+        },
+      ),
+    );
+  }
+}
+
+class _VideoPlayerFeedItem extends StatefulWidget {
+  final Map<String, dynamic> video;
+  const _VideoPlayerFeedItem({required this.video});
+
+  @override
+  State<_VideoPlayerFeedItem> createState() => _VideoPlayerFeedItemState();
+}
+
+class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+  bool _isLiked = false;
+  int _likesCount = 0;
+  String? _videoId;
+  final TextEditingController _commentController = TextEditingController();
+  bool _isSendingComment = false;
+  Map<String, dynamic>? _uploaderData;
+  bool _isLoadingUploader = true;
+  bool _isFollowing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.video['videoUrl'] ?? '')
+      ..initialize().then((_) {
+        setState(() {
+          _isInitialized = true;
+        });
+        _controller?.play();
+        _controller?.setLooping(true);
+      });
+    _likesCount = widget.video['likesCount'] ?? 0;
+    _videoId = widget.video['id'] ?? widget.video['videoId'];
+    _checkIfLiked();
+    _fetchUploaderData();
+  }
+
+  Future<void> _checkIfLiked() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _videoId == null) return;
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('videos')
+            .doc(_videoId)
+            .collection('likes')
+            .doc(user.uid)
+            .get();
+    setState(() {
+      _isLiked = doc.exists;
+    });
+  }
+
+  Future<void> _toggleLike() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _videoId == null) return;
+    final likeRef = FirebaseFirestore.instance
+        .collection('videos')
+        .doc(_videoId)
+        .collection('likes')
+        .doc(user.uid);
+    final videoRef = FirebaseFirestore.instance
+        .collection('videos')
+        .doc(_videoId);
+    if (_isLiked) {
+      await likeRef.delete();
+      await videoRef.update({'likesCount': FieldValue.increment(-1)});
+      setState(() {
+        _isLiked = false;
+        _likesCount--;
+      });
+    } else {
+      await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
+      await videoRef.update({'likesCount': FieldValue.increment(1)});
+      setState(() {
+        _isLiked = true;
+        _likesCount++;
+      });
+    }
+  }
+
+  Future<void> _addComment() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null ||
+        _videoId == null ||
+        _commentController.text.trim().isEmpty)
+      return;
+    setState(() {
+      _isSendingComment = true;
+    });
+    final commentText = _commentController.text.trim();
+    await FirebaseFirestore.instance
+        .collection('videos')
+        .doc(_videoId)
+        .collection('comments')
+        .add({
+          'uid': user.uid,
+          'username': user.displayName ?? 'Utilisateur',
+          'text': commentText,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+    await FirebaseFirestore.instance.collection('videos').doc(_videoId).update({
+      'commentsCount': FieldValue.increment(1),
+    });
+    _commentController.clear();
+    setState(() {
+      _isSendingComment = false;
+    });
+  }
+
+  Future<void> _fetchUploaderData() async {
+    setState(() {
+      _isLoadingUploader = true;
+    });
+    final uploaderId = widget.video['uid'];
+    if (uploaderId == null) return;
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uploaderId)
+            .get();
+    if (doc.exists) {
+      setState(() {
+        _uploaderData = doc.data();
+      });
+      _checkIfFollowing(uploaderId);
+    }
+    setState(() {
+      _isLoadingUploader = false;
+    });
+  }
+
+  Future<void> _checkIfFollowing(String uploaderId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uploaderId)
+            .collection('followers')
+            .doc(user.uid)
+            .get();
+    setState(() {
+      _isFollowing = doc.exists;
+    });
+  }
+
+  Future<void> _toggleFollow() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final uploaderId = widget.video['uid'];
+    if (user == null || uploaderId == null) return;
+    final followRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uploaderId)
+        .collection('followers')
+        .doc(user.uid);
+    final uploaderRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uploaderId);
+    if (_isFollowing) {
+      await followRef.delete();
+      await uploaderRef.update({'abonnes': FieldValue.increment(-1)});
+      setState(() {
+        _isFollowing = false;
+      });
+    } else {
+      await followRef.set({'followedAt': FieldValue.serverTimestamp()});
+      await uploaderRef.update({'abonnes': FieldValue.increment(1)});
+      setState(() {
+        _isFollowing = true;
+      });
+    }
+  }
+
+  void _showCommentsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF23242B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-            ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 8,
+                      top: 16,
+                      bottom: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Commentaires',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('videos')
+                              .doc(_videoId)
+                              .collection('comments')
+                              .orderBy('createdAt', descending: true)
+                              .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFC34E00),
+                            ),
+                          );
+                        }
+                        final comments = snapshot.data!.docs;
+                        if (comments.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'Aucun commentaire',
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          itemCount: comments.length,
+                          itemBuilder: (context, index) {
+                            final data =
+                                comments[index].data() as Map<String, dynamic>;
+                            return ListTile(
+                              leading: CircleAvatar(child: Icon(Icons.person)),
+                              title: Text(
+                                data['username'] ?? 'Utilisateur',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              subtitle: Text(
+                                data['text'] ?? '',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFFC34E00)));
+    }
+    return Stack(
+      children: [
+        Center(
+          child: AspectRatio(
+            aspectRatio: _controller!.value.aspectRatio,
+            child: VideoPlayer(_controller!),
           ),
-          // Flèche retour stylisée en haut à gauche
-          Positioned(
-            top: 24,
-            left: 8,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 28),
-            ),
-          ),
-          // Overlay actions à droite
-          Positioned(
-            right: 16,
-            bottom: 120,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Like
-                _SvgActionButton(
-                  svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"></path></svg>''',
-                  count: likes,
+        ),
+        // Overlays TikTok (profil, likes, commentaires, etc.)
+        Positioned(
+          right: 16,
+          bottom: 120,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  _isLiked ? Icons.favorite : Icons.favorite_border,
+                  color: _isLiked ? Colors.red : Colors.white,
+                  size: 32,
                 ),
-                SizedBox(height: 24),
-                // Comment
-                GestureDetector(
-                  onTap: () => _showCommentsModal(context),
-                  child: _SvgActionButton(
-                    svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"></path></svg>''',
-                    count: comments,
+                onPressed: _toggleLike,
+              ),
+              SizedBox(height: 4),
+              Text(
+                _likesCount >= 1000
+                    ? '${(_likesCount / 1000).toStringAsFixed(1)}K'
+                    : _likesCount.toString(),
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+              // Bouton commentaire
+              IconButton(
+                icon: Icon(Icons.comment, color: Colors.white, size: 32),
+                onPressed: _showCommentsModal,
+              ),
+            ],
+          ),
+        ),
+        // Infos vidéo + uploader
+        Positioned(
+          left: 16,
+          bottom: 40,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _isLoadingUploader
+                      ? CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.grey[700],
+                      )
+                      : CircleAvatar(
+                        radius: 18,
+                        backgroundImage: NetworkImage(
+                          _uploaderData?['profilePic'] ??
+                              'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
+                        ),
+                      ),
+                  SizedBox(width: 10),
+                  Text(
+                    _uploaderData?['username'] ?? 'Utilisateur',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(width: 8),
+                  if (!_isLoadingUploader &&
+                      FirebaseAuth.instance.currentUser?.uid !=
+                          widget.video['uid'])
+                    GestureDetector(
+                      onTap: _toggleFollow,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isFollowing ? Colors.grey : Colors.red,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Text(
+                          _isFollowing ? 'Abonné' : 'S\'abonner',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                widget.video['caption'] ?? '',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        // Champ de saisie commentaire en bas
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            margin: EdgeInsets.only(left: 8, right: 8, bottom: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Color(0xFF23242B),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: InputDecoration(
+                      hintText: 'Commenter...',
+                      border: InputBorder.none,
+                    ),
                   ),
                 ),
-                SizedBox(height: 24),
-                // Star (favori)
-                _SvgActionButton(
-                  svg: '''<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.42,29.84l85.62,40.55,40.55,85.62A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14L118.42,148.9l47.24-47.25a8,8,0,0,0-11.31-11.31L107.1,137.58,24,98.22l.14,0L216,40Z"></path></svg>''',
-                  count: 197,
-                ),
+                SizedBox(width: 8),
+                _isSendingComment
+                    ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFC34E00),
+                      ),
+                    )
+                    : IconButton(
+                      icon: Icon(Icons.send, color: Color(0xFFC34E00)),
+                      onPressed: _addComment,
+                    ),
               ],
             ),
           ),
-          // Bas de l'écran : profil, nom, follow, description, partage
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 70,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundImage: NetworkImage('https://placehold.co/48x48/fff/000?text=U'),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Color(0xFFC34E00), width: 2),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        username,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text('Follow', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            description,
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            hashtags,
-                            style: TextStyle(color: Colors.white70, fontSize: 16),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Champ de commentaire en bas
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: GestureDetector(
-              onTap: () => _showCommentInput(context),
-              child: Container(
-                margin: EdgeInsets.only(left: 8, right: 8, bottom: 8),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Color(0xFF23242B),
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Comment',
-                  style: TextStyle(color: Colors.white54, fontSize: 18),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -398,10 +778,12 @@ class _SvgActionButton extends StatelessWidget {
         SvgPicture.string(svg, color: Colors.white, width: 32, height: 32),
         SizedBox(height: 2),
         Text(
-          count >= 1000 ? '${(count / 1000).toStringAsFixed(1)}K' : count.toString(),
+          count >= 1000
+              ? '${(count / 1000).toStringAsFixed(1)}K'
+              : count.toString(),
           style: TextStyle(color: Colors.white, fontSize: 13),
         ),
       ],
     );
   }
-} 
+}

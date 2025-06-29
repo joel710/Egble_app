@@ -26,8 +26,11 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<void> _fetchVideos() async {
-    setState(() { _isLoading = true; });
-    final snapshot = await FirebaseFirestore.instance.collection('videos').get();
+    setState(() {
+      _isLoading = true;
+    });
+    final snapshot =
+        await FirebaseFirestore.instance.collection('videos').get();
     final videos = snapshot.docs.map((doc) => doc.data()).toList();
     videos.shuffle(Random());
     setState(() {
@@ -49,12 +52,14 @@ class _MenuPageState extends State<MenuPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ProfileScreen(
-            username: 'genz_user',
-            bio: 'Juste un dev qui code son TikTok parce que TikTok est coupé. #NoTikTokNoCry',
-            abonnes: 42,
-            isCurrentUser: true,
-          ),
+          builder:
+              (context) => ProfileScreen(
+                username: 'genz_user',
+                bio:
+                    'Juste un dev qui code son TikTok parce que TikTok est coupé. #NoTikTokNoCry',
+                abonnes: 42,
+                isCurrentUser: true,
+              ),
         ),
       );
     }
@@ -91,7 +96,9 @@ class _MenuPageState extends State<MenuPage> {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF262A34),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   ),
                   child: Text('Actus', style: TextStyle(color: Colors.white)),
@@ -101,7 +108,9 @@ class _MenuPageState extends State<MenuPage> {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF262A34),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   ),
                   child: Text('LIVE', style: TextStyle(color: Colors.white)),
@@ -111,27 +120,39 @@ class _MenuPageState extends State<MenuPage> {
             SizedBox(height: 8),
             // Grille d'images
             Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: Color(0xFFC34E00)))
-                  : _videos.isEmpty
-                      ? Center(child: Text('Aucune vidéo disponible', style: TextStyle(color: Colors.white54)))
-                      : MasonryGridView.count(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          physics: BouncingScrollPhysics(),
-                          padding: EdgeInsets.only(bottom: 16),
-                          itemCount: _videos.length,
-                          itemBuilder: (context, index) {
-                            final video = _videos[index];
-                            final title = video['caption'] ?? 'Vidéo';
-                            final thumbnail = video['thumbnailUrl'] ?? 'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
-                            return SizedBox(
-                              height: 200 + Random().nextInt(60),
-                              child: _buildBattleCard(title, thumbnail, video),
-                            );
-                          },
+              child:
+                  _isLoading
+                      ? Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFC34E00),
                         ),
+                      )
+                      : _videos.isEmpty
+                      ? Center(
+                        child: Text(
+                          'Aucune vidéo disponible',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
+                      : MasonryGridView.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        physics: BouncingScrollPhysics(),
+                        padding: EdgeInsets.only(bottom: 16),
+                        itemCount: _videos.length,
+                        itemBuilder: (context, index) {
+                          final video = _videos[index];
+                          final title = video['caption'] ?? 'Vidéo';
+                          final thumbnail =
+                              video['thumbnailUrl'] ??
+                              'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
+                          return SizedBox(
+                            height: (200 + Random().nextInt(60)).toDouble(),
+                            child: _buildBattleCard(title, thumbnail, video),
+                          );
+                        },
+                      ),
             ),
           ],
         ),
@@ -143,21 +164,19 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildBattleCard(String title, String imageUrl, Map<String, dynamic> video) {
+  Widget _buildBattleCard(
+    String title,
+    String imageUrl,
+    Map<String, dynamic> video,
+  ) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VideoScrollPage(
-              username: video['username'] ?? 'utilisateur',
-              description: video['caption'] ?? '',
-              hashtags: '',
-              likes: video['likesCount'] ?? 0,
-              comments: video['commentsCount'] ?? 0,
-              shares: 0,
-              // Tu pourras ajouter d'autres champs ici
-            ),
+            builder:
+                (context) =>
+                    VideoScrollPage(initialIndex: _videos.indexOf(video)),
           ),
         );
       },
@@ -167,7 +186,11 @@ class _MenuPageState extends State<MenuPage> {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
             ),
           ),
           SizedBox(height: 4),
