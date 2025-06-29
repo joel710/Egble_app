@@ -51,16 +51,7 @@ class _MenuPageState extends State<MenuPage> {
     } else if (index == 2) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder:
-              (context) => ProfileScreen(
-                username: 'genz_user',
-                bio:
-                    'Juste un dev qui code son TikTok parce que TikTok est coupé. #NoTikTokNoCry',
-                abonnes: 42,
-                isCurrentUser: true,
-              ),
-        ),
+        MaterialPageRoute(builder: (context) => ProfileScreen()),
       );
     }
   }

@@ -10,20 +10,9 @@ import 'upload.dart';
 import 'video_scroll_page.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final String username;
-  final String bio;
+  final String? uid;
 
-  final int abonnes;
-  final bool isCurrentUser; // <--- Nouvel argument
-
-  const ProfileScreen({
-    required this.username,
-    required this.bio,
-
-    required this.abonnes,
-    required this.isCurrentUser,
-    Key? key,
-  }) : super(key: key);
+  const ProfileScreen({this.uid, Key? key}) : super(key: key);
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -41,9 +30,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameEditController = TextEditingController();
   final TextEditingController _bioEditController = TextEditingController();
 
-  // Ajout pour la grille de vidéos
   List<Map<String, dynamic>> _userVideos = [];
   bool _isLoadingVideos = true;
+
+  bool get isCurrentUser {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    return (widget.uid == null || widget.uid == user.uid);
+  }
 
   @override
   void initState() {
@@ -56,20 +50,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isLoadingProfile = true;
     });
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Utilisateur non connecté.');
+      String? userId = widget.uid;
+      if (userId == null) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception('Utilisateur non connecté.');
+        userId = user.uid;
+      }
       final doc =
           await FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(userId)
               .get();
       if (doc.exists) {
         setState(() {
           _userData = doc.data();
           _profilePicUrl = _userData?['profilePic'];
         });
-        // Récupère les vidéos de ce user
-        await _fetchUserVideos(user.uid);
+        await _fetchUserVideos(userId);
       }
     } catch (e) {
       // Optionnel : afficher une erreur
@@ -313,12 +310,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final abonnes = _userData?['abonnes'] ?? 0;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.isCurrentUser ? 'Mon Profil' : 'Profil de $username',
-        ),
+        title: Text(isCurrentUser ? 'Mon Profil' : 'Profil de $username'),
         centerTitle: true,
         actions:
-            widget.isCurrentUser
+            isCurrentUser
                 ? [
                   IconButton(
                     icon: Icon(Icons.edit, color: Color(0xFFC34E00)),
@@ -367,6 +362,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     StatColumn(label: 'Abonnés', count: abonnes),
                     SizedBox(width: 20),
+                    if (!isCurrentUser)
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Gestion follow/unfollow
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user == null || widget.uid == null) return;
+                          final followRef = FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(widget.uid)
+                              .collection('followers')
+                              .doc(user.uid);
+                          final uploaderRef = FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(widget.uid);
+                          final doc = await followRef.get();
+                          if (doc.exists) {
+                            await followRef.delete();
+                            await uploaderRef.update({
+                              'abonnes': FieldValue.increment(-1),
+                            });
+                            setState(() {});
+                          } else {
+                            await followRef.set({
+                              'followedAt': FieldValue.serverTimestamp(),
+                            });
+                            await uploaderRef.update({
+                              'abonnes': FieldValue.increment(1),
+                            });
+                            setState(() {});
+                          }
+                          await _fetchUserProfile();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFC34E00),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'S’abonner',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                   ],
                 ),
                 SizedBox(height: 10),
@@ -420,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       bottomNavigationBar: CustomNavBar(
-        currentIndex: 2,
+        currentIndex: isCurrentUser ? 2 : 0,
         onTap: (index) {
           if (index == 0) {
             Navigator.pushAndRemoveUntil(
