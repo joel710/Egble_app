@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'privacy_policy_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const double kPadding = 24;
 
@@ -41,7 +43,7 @@ class _RegisterPageState extends State<RegisterPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: 40),
-                
+
                 // Titre
                 Text(
                   'Créer un compte',
@@ -54,14 +56,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(height: 8),
                 Text(
                   'Rejoins la communauté Egble',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[400],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[400]),
                 ),
-                
+
                 SizedBox(height: 40),
-                
+
                 // Champ Nom
                 TextFormField(
                   controller: _nameController,
@@ -84,9 +83,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Champ Email
                 TextFormField(
                   controller: _emailController,
@@ -113,9 +112,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Champ Mot de passe
                 TextFormField(
                   controller: _passwordController,
@@ -142,9 +141,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Champ Confirmation mot de passe
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -171,9 +170,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Lien vers politique de confidentialité
                 Row(
                   children: [
@@ -196,7 +195,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         child: RichText(
                           text: TextSpan(
                             text: 'J\'accepte la ',
-                            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
                             children: [
                               TextSpan(
                                 text: 'politique de confidentialité',
@@ -212,9 +214,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ],
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Bouton Inscription
                 SizedBox(
                   width: double.infinity,
@@ -227,21 +229,22 @@ class _RegisterPageState extends State<RegisterPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: _isLoading
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            'Créer un compte',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                    child:
+                        _isLoading
+                            ? CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                              'Créer un compte',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
                   ),
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Lien vers connexion
                 Center(
                   child: GestureDetector(
@@ -265,7 +268,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-                
+
                 SizedBox(height: 40),
               ],
             ),
@@ -282,20 +285,43 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       try {
-        UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        UserCredential cred = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text.trim(),
+            );
+        // Synchronisation avec Supabase
+        final supabaseResponse = await Supabase.instance.client.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        if (supabaseResponse.user == null) {
+          print('Erreur création Supabase : ${supabaseResponse.toString()}');
+        }
+        // Stockage sécurisé pour reconnexion automatique
+        final storage = FlutterSecureStorage();
+        await storage.write(
+          key: 'user_email',
+          value: _emailController.text.trim(),
+        );
+        await storage.write(
+          key: 'user_password',
+          value: _passwordController.text.trim(),
+        );
         // Enregistrement Firestore
-        await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
-          'username': _nameController.text.trim(),
-          'bio': '',
-          'profilePic': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
-          'abonnes': 0,
-          'abonnesCount': 0,
-          'videosCount': 0,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(cred.user!.uid)
+            .set({
+              'username': _nameController.text.trim(),
+              'bio': '',
+              'profilePic':
+                  'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
+              'abonnes': 0,
+              'abonnesCount': 0,
+              'videosCount': 0,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
         // Inscription réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
       } on FirebaseAuthException catch (e) {
@@ -305,9 +331,9 @@ class _RegisterPageState extends State<RegisterPage> {
         } else if (e.code == 'weak-password') {
           message = 'Le mot de passe est trop faible.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         setState(() {
           _isLoading = false;

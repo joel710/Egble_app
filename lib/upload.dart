@@ -63,8 +63,10 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       if (androidInfo.version.sdkInt >= 33) {
-        // Android 13+ : permission vidéos
-        return await Permission.videos.request().isGranted;
+        // Android 13+ : demander images ET vidéos
+        final images = await Permission.photos.request();
+        final videos = await Permission.videos.request();
+        return images.isGranted || videos.isGranted;
       } else {
         // Android <= 12 : permission stockage
         return await Permission.storage.request().isGranted;
@@ -408,6 +410,16 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleUpload() async {
+    // Vérifie la session Supabase avant l'upload
+    final supabaseUser = Supabase.instance.client.auth.currentUser;
+    if (supabaseUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Session Supabase expirée. Veuillez vous reconnecter.'),
+        ),
+      );
+      return;
+    }
     // Vérifie si une vidéo est sélectionnée (mobile) ou si le contrôleur est initialisé (web)
     bool hasVideo =
         _selectedVideo != null ||
@@ -426,7 +438,7 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       _isUploading = true;
     });
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté.');
 
       String? url;

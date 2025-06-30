@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path/path.dart' as path;
 
@@ -14,7 +13,7 @@ class VideoService {
   static Future<String?> uploadVideo({
     required File file,
     required String caption,
-    required User user,
+    required supabase.User user,
   }) async {
     // Vérification taille
     final fileSize = await file.length();
@@ -33,7 +32,7 @@ class VideoService {
 
     // Upload sur Supabase Storage
     final fileName =
-        '${user.uid}_${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+        '${user.id}_${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
     final storageResponse = await supabase.Supabase.instance.client.storage
         .from('videos')
         .upload(
@@ -50,7 +49,7 @@ class VideoService {
 
     // Enregistrement Firestore
     await FirebaseFirestore.instance.collection('videos').add({
-      'uid': user.uid,
+      'uid': user.id,
       'videoUrl': publicUrl,
       'caption': caption,
       'createdAt': FieldValue.serverTimestamp(),

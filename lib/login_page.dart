@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -35,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: 40),
-                
+
                 // Titre
                 Text(
                   'Connexion',
@@ -48,14 +49,11 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: 8),
                 Text(
                   'Connecte-toi à ton compte',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[400],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[400]),
                 ),
-                
+
                 SizedBox(height: 40),
-                
+
                 // Champ Email
                 TextFormField(
                   controller: _emailController,
@@ -79,9 +77,9 @@ class _LoginPageState extends State<LoginPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Champ Mot de passe
                 TextFormField(
                   controller: _passwordController,
@@ -105,9 +103,9 @@ class _LoginPageState extends State<LoginPage> {
                     return null;
                   },
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Bouton Connexion
                 SizedBox(
                   width: double.infinity,
@@ -120,21 +118,22 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: _isLoading
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            'Se connecter',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                    child:
+                        _isLoading
+                            ? CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                              'Se connecter',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
                   ),
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Lien vers inscription
                 Center(
                   child: GestureDetector(
@@ -177,6 +176,15 @@ class _LoginPageState extends State<LoginPage> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        // Connexion à Supabase
+        final supabaseResponse = await Supabase.instance.client.auth
+            .signInWithPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text.trim(),
+            );
+        if (supabaseResponse.user == null) {
+          print('Erreur connexion Supabase : [${supabaseResponse.toString()}');
+        }
         // Connexion réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
       } on FirebaseAuthException catch (e) {
@@ -186,9 +194,9 @@ class _LoginPageState extends State<LoginPage> {
         } else if (e.code == 'wrong-password') {
           message = 'Mot de passe incorrect.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         setState(() {
           _isLoading = false;
