@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:video_player/video_player.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'profile.dart';
 
 class VideoScrollPage extends StatefulWidget {
   // On peut passer l'index initial si besoin
@@ -660,28 +661,52 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _isLoadingUploader
-                      ? CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.grey[700],
-                      )
-                      : CircleAvatar(
-                        radius: 18,
-                        backgroundImage: NetworkImage(
-                          _uploaderData?['profilePic'] ??
-                              'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfileScreen(
+                            uid: widget.video['uid'],
+                          ),
                         ),
-                      ),
+                      );
+                    },
+                    child: _isLoadingUploader
+                        ? CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.grey[700],
+                        )
+                        : CircleAvatar(
+                          radius: 18,
+                          backgroundImage: NetworkImage(
+                            _uploaderData?['profilePic'] ??
+                                'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
+                          ),
+                        ),
+                  ),
                   SizedBox(width: 10),
-                  Text(
-                    _uploaderData?['username'] ?? 'Utilisateur',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfileScreen(
+                            uid: widget.video['uid'],
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      _uploaderData?['username'] ?? 'Utilisateur',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(width: 8),
                   if (!_isLoadingUploader &&
