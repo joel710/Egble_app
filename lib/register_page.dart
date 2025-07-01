@@ -298,6 +298,16 @@ class _RegisterPageState extends State<RegisterPage> {
           return;
         }
         final userId = supabaseResponse.user!.id;
+        // Ajout dans la table users
+        await Supabase.instance.client.from('users').insert({
+          'id': userId,
+          'email': _emailController.text.trim(),
+          'username': _nameController.text.trim(),
+          'profilepic':
+              'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
+          'bio': '',
+          'createdat': DateTime.now().toIso8601String(),
+        });
         // Stockage sécurisé pour reconnexion automatique
         final storage = FlutterSecureStorage();
         await storage.write(
@@ -308,15 +318,6 @@ class _RegisterPageState extends State<RegisterPage> {
           key: 'user_password',
           value: _passwordController.text.trim(),
         );
-        // Création du profil utilisateur dans la table 'users' de Supabase
-        await Supabase.instance.client.from('users').insert({
-          'id': userId,
-          'username': _nameController.text.trim(),
-          'bio': '',
-          'profilePic':
-              'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
-          'createdAt': DateTime.now().toIso8601String(),
-        });
         // Inscription réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
       } on AuthException catch (e) {
