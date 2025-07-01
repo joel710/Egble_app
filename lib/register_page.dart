@@ -299,15 +299,14 @@ class _RegisterPageState extends State<RegisterPage> {
         }
         final userId = supabaseResponse.user!.id;
         // Ajout dans la table users
-        await Supabase.instance.client.from('users').insert({
+        final insertResponse = await Supabase.instance.client.from('users').insert({
           'id': userId,
-          'email': _emailController.text.trim(),
           'username': _nameController.text.trim(),
           'profilepic':
               'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
           'bio': '',
-          'createdat': DateTime.now().toIso8601String(),
         });
+        print('Insert user response: ' + insertResponse.toString());
         // Stockage sécurisé pour reconnexion automatique
         final storage = FlutterSecureStorage();
         await storage.write(
@@ -333,6 +332,7 @@ class _RegisterPageState extends State<RegisterPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
       } catch (e) {
+        print('Erreur lors de l\'insertion dans users: ' + e.toString());
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Erreur : ${e.toString()}')));

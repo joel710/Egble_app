@@ -4,8 +4,9 @@ import 'profile.dart';
 import 'video_scroll_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'upload.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
+import 'package:video_player/video_player.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -29,12 +30,13 @@ class _MenuPageState extends State<MenuPage> {
     setState(() {
       _isLoading = true;
     });
-    final snapshot =
-        await FirebaseFirestore.instance.collection('videos').get();
-    final videos = snapshot.docs.map((doc) => doc.data()).toList();
-    videos.shuffle(Random());
+    final response = await Supabase.instance.client
+        .from('videos')
+        .select()
+        .order('createdat', ascending: false);
+    response.shuffle(Random());
     setState(() {
-      _videos = List<Map<String, dynamic>>.from(videos);
+      _videos = List<Map<String, dynamic>>.from(response);
       _isLoading = false;
     });
   }
@@ -136,7 +138,7 @@ class _MenuPageState extends State<MenuPage> {
                           final video = _videos[index];
                           final title = video['caption'] ?? 'Vidéo';
                           final thumbnail =
-                              video['thumbnailUrl'] ??
+                              video['thumbnailurl'] ??
                               'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
                           return SizedBox(
                             height: (200 + Random().nextInt(60)).toDouble(),
@@ -177,17 +179,57 @@ class _MenuPageState extends State<MenuPage> {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-              ),
+              child: _VideoPreviewPlayer(videoUrl: video['videourl']),
             ),
           ),
           SizedBox(height: 4),
           Text(title, style: TextStyle(color: Colors.white)),
         ],
       ),
+    );
+  }
+}
+
+class _VideoPreviewPlayer extends StatefulWidget {
+  final String videoUrl;
+  const _VideoPreviewPlayer({required this.videoUrl});
+
+  @override
+  State<_VideoPreviewPlayer> createState() => _VideoPreviewPlayerState();
+}
+
+class _VideoPreviewPlayerState extends State<_VideoPreviewPlayer> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.videoUrl)
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.setVolume(0);
+        _controller.setLooping(true);
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return Container(
+        color: Colors.black12,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AspectRatio(
+      aspectRatio: _controller.value.aspectRatio,
+      child: VideoPlayer(_controller),
     );
   }
 }
