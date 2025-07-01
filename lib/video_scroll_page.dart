@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'nav_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:video_player/video_player.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'profile.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'services/video_interaction_service.dart';
 
 class VideoScrollPage extends StatefulWidget {
   // On peut passer l'index initial si besoin
@@ -20,7 +21,7 @@ class _VideoScrollPageState extends State<VideoScrollPage> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   int _pageSize = 8;
-  DocumentSnapshot? _lastDoc;
+  int _currentPage = 0;
   PageController? _pageController;
 
   @override
@@ -39,21 +40,24 @@ class _VideoScrollPageState extends State<VideoScrollPage> {
       setState(() {
         _isLoading = true;
       });
-    Query query = FirebaseFirestore.instance
-        .collection('videos')
-        .orderBy('createdAt', descending: true)
-        .limit(_pageSize);
-    if (_lastDoc != null) {
-      query = query.startAfterDocument(_lastDoc!);
-    }
-    final snapshot = await query.get();
-    if (snapshot.docs.isNotEmpty) {
-      _lastDoc = snapshot.docs.last;
+    try {
+      final response = await Supabase.instance.client
+          .from('videos')
+          .select()
+          .order('createdat', ascending: false)
+          .range(_currentPage * _pageSize, (_currentPage + 1) * _pageSize - 1);
       setState(() {
-        _videos.addAll(
-          snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>),
-        );
+        if (loadMore) {
+          _videos.addAll(List<Map<String, dynamic>>.from(response));
+        } else {
+          _videos = List<Map<String, dynamic>>.from(response);
+        }
+        if (response != null && (response as List).isNotEmpty) {
+          _currentPage += 1;
+        }
       });
+    } catch (e) {
+      print('Erreur lors du chargement des vidéos: $e');
     }
     setState(() {
       _isLoading = false;
@@ -147,155 +151,14 @@ class _VideoScrollPageState extends State<VideoScrollPage> {
     );
   }
 
-  void _showCommentsModal(BuildContext context) {
+  void _showCommentsModal(BuildContext context, Map<String, dynamic> video) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF23242B),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 8,
-                      top: 16,
-                      bottom: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '217 comments',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Liste des commentaires
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      children: [
-                        _buildComment(
-                          avatar:
-                              'https://randomuser.me/api/portraits/men/1.jpg',
-                          username: 'joel453',
-                          text: 'egble do mi?',
-                        ),
-                        _buildComment(
-                          avatar:
-                              'https://randomuser.me/api/portraits/cats/1.jpg',
-                          username: 'overfit678A032B',
-                          text: ' le model a encore crasher , egblé.',
-                        ),
-                        _buildComment(
-                          avatar:
-                              'https://randomuser.me/api/portraits/men/2.jpg',
-                          username: 'El_baron',
-                          text: 'aloba gné azé gan🥲🌹',
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Champ de saisie en bas
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF7F7F7),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Comment',
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFC34E00),
-                            shape: StadiumBorder(),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 10,
-                            ),
-                          ),
-                          child: Text(
-                            'Send',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+        return CommentsModal(video: video);
       },
-    );
-  }
-
-  Widget _buildComment({
-    required String avatar,
-    required String username,
-    required String text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(backgroundImage: NetworkImage(avatar), radius: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  username,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(text, style: TextStyle(color: Colors.white)),
-              ],
-            ),
-          ),
-          Column(
-            children: [Icon(Icons.favorite_border, color: Colors.white54)],
-          ),
-        ],
-      ),
     );
   }
 
@@ -323,10 +186,163 @@ class _VideoScrollPageState extends State<VideoScrollPage> {
             );
           }
           final video = _videos[index];
-          return _VideoPlayerFeedItem(video: video);
+          return Stack(
+            children: [
+              // Vidéo
+              _VideoPlayerFeedItem(video: video),
+              // Colonne d'actions à droite
+              Positioned(
+                right: 12,
+                bottom: 120,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _ActionButton(
+                      icon: Icons.favorite_border,
+                      activeIcon: Icons.favorite,
+                      count: video['likescount'] ?? 0,
+                      onTap: () => _handleLike(video),
+                      isActive: false,
+                      videoId: video['id'],
+                    ),
+                    SizedBox(height: 28),
+                    _ActionButton(
+                      iconWidget: SvgPicture.asset(
+                        'assets/icons/message_circle_more.svg',
+                        width: 28,
+                        height: 28,
+                        color: Colors.white,
+                      ),
+                      count: video['commentscount'] ?? 0,
+                      onTap: () => _showCommentsModal(context, video),
+                    ),
+                    SizedBox(height: 28),
+                    _ActionButton(
+                      icon: LucideIcons.send,
+                      count: video['sharesCount'] ?? 0,
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ),
+              // Infos vidéo et profil en bas à gauche
+              Positioned(
+                left: 16,
+                bottom: 80,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundImage: NetworkImage(
+                            video['uploaderPic'] ??
+                                'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          video['uploaderName'] ?? 'Utilisateur',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFC34E00),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 0,
+                            ),
+                            minimumSize: Size(0, 28),
+                          ),
+                          child: Text('Follow', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: Text(
+                        video['caption'] ?? '',
+                        style: TextStyle(color: Colors.white, fontSize: 15),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Champ de commentaire en bas
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  margin: EdgeInsets.only(left: 12, right: 12, bottom: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: Colors.white24, width: 0.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          style: TextStyle(fontSize: 13, color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Ajouter un commentaire...',
+                            border: InputBorder.none,
+                            isDense: true,
+                            hintStyle: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white54,
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.emoji_emotions_outlined,
+                          color: Colors.white38,
+                          size: 20,
+                        ),
+                        onPressed: () {},
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.send,
+                          color: Color(0xFFC34E00),
+                          size: 20,
+                        ),
+                        onPressed: () {},
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
         },
       ),
     );
+  }
+
+  void _handleLike(Map<String, dynamic> video) {
+    // Cette fonction sera appelée par le _VideoPlayerFeedItem
   }
 }
 
@@ -353,7 +369,7 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.network(widget.video['videoUrl'] ?? '')
+    _controller = VideoPlayerController.network(widget.video['videourl'] ?? '')
       ..initialize().then((_) {
         setState(() {
           _isInitialized = true;
@@ -361,81 +377,43 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
         _controller?.play();
         _controller?.setLooping(true);
       });
-    _likesCount = widget.video['likesCount'] ?? 0;
-    _videoId = widget.video['id'] ?? widget.video['videoId'];
+    _likesCount = widget.video['likescount'] ?? 0;
+    _videoId = widget.video['id'] ?? widget.video['videoid'];
     _checkIfLiked();
     _fetchUploaderData();
   }
 
   Future<void> _checkIfLiked() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _videoId == null) return;
-    final doc =
-        await FirebaseFirestore.instance
-            .collection('videos')
-            .doc(_videoId)
-            .collection('likes')
-            .doc(user.uid)
-            .get();
-    setState(() {
-      _isLiked = doc.exists;
-    });
-  }
+    final user = Supabase.instance.client.auth.currentUser;
+    final videoId = _videoId!;
+    if (user == null) return;
 
-  Future<void> _toggleLike() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _videoId == null) return;
-    final likeRef = FirebaseFirestore.instance
-        .collection('videos')
-        .doc(_videoId)
-        .collection('likes')
-        .doc(user.uid);
-    final videoRef = FirebaseFirestore.instance
-        .collection('videos')
-        .doc(_videoId);
-    if (_isLiked) {
-      await likeRef.delete();
-      await videoRef.update({'likesCount': FieldValue.increment(-1)});
+    try {
+      final response =
+          await Supabase.instance.client
+              .from('video_likes')
+              .select()
+              .eq('video_id', videoId)
+              .eq('user_id', user.id)
+              .maybeSingle();
+
       setState(() {
-        _isLiked = false;
-        _likesCount--;
+        _isLiked = response != null;
       });
-    } else {
-      await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
-      await videoRef.update({'likesCount': FieldValue.increment(1)});
-      setState(() {
-        _isLiked = true;
-        _likesCount++;
-      });
+    } catch (e) {
+      print('Erreur lors de la vérification du like: $e');
     }
   }
 
-  Future<void> _addComment() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null ||
-        _videoId == null ||
-        _commentController.text.trim().isEmpty)
-      return;
+  Future<void> _toggleLike() async {
+    final videoId = _videoId!;
+    final result = await VideoInteractionService.toggleLike(
+      videoId,
+      _likesCount,
+    );
     setState(() {
-      _isSendingComment = true;
-    });
-    final commentText = _commentController.text.trim();
-    await FirebaseFirestore.instance
-        .collection('videos')
-        .doc(_videoId)
-        .collection('comments')
-        .add({
-          'uid': user.uid,
-          'username': user.displayName ?? 'Utilisateur',
-          'text': commentText,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-    await FirebaseFirestore.instance.collection('videos').doc(_videoId).update({
-      'commentsCount': FieldValue.increment(1),
-    });
-    _commentController.clear();
-    setState(() {
-      _isSendingComment = false;
+      _isLiked = result;
+      _likesCount += result ? 1 : -1;
     });
   }
 
@@ -443,161 +421,93 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
     setState(() {
       _isLoadingUploader = true;
     });
+
     final uploaderId = widget.video['uid'];
     if (uploaderId == null) return;
-    final doc =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uploaderId)
-            .get();
-    if (doc.exists) {
+
+    try {
+      final response =
+          await Supabase.instance.client
+              .from('users')
+              .select()
+              .eq('id', uploaderId)
+              .single();
+
       setState(() {
-        _uploaderData = doc.data();
+        _uploaderData = response;
       });
       _checkIfFollowing(uploaderId);
+    } catch (e) {
+      print('Erreur lors du chargement des données uploader: $e');
+    } finally {
+      setState(() {
+        _isLoadingUploader = false;
+      });
     }
-    setState(() {
-      _isLoadingUploader = false;
-    });
   }
 
   Future<void> _checkIfFollowing(String uploaderId) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-    final doc =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uploaderId)
-            .collection('followers')
-            .doc(user.uid)
-            .get();
-    setState(() {
-      _isFollowing = doc.exists;
-    });
-  }
 
-  Future<void> _toggleFollow() async {
-    final user = FirebaseAuth.instance.currentUser;
-    final uploaderId = widget.video['uid'];
-    if (user == null || uploaderId == null) return;
-    final followRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uploaderId)
-        .collection('followers')
-        .doc(user.uid);
-    final uploaderRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uploaderId);
-    if (_isFollowing) {
-      await followRef.delete();
-      await uploaderRef.update({'abonnes': FieldValue.increment(-1)});
+    try {
+      final response =
+          await Supabase.instance.client
+              .from('followers')
+              .select()
+              .eq('follower_id', user.id)
+              .eq('followed_id', uploaderId)
+              .maybeSingle();
+
       setState(() {
-        _isFollowing = false;
+        _isFollowing = response != null;
       });
-    } else {
-      await followRef.set({'followedAt': FieldValue.serverTimestamp()});
-      await uploaderRef.update({'abonnes': FieldValue.increment(1)});
-      setState(() {
-        _isFollowing = true;
-      });
+    } catch (e) {
+      print('Erreur lors de la vérification du follow: $e');
     }
   }
 
-  void _showCommentsModal() {
+  Future<void> _toggleFollow() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final uploaderId = widget.video['uid'];
+    if (user == null || uploaderId == null) return;
+
+    try {
+      if (_isFollowing) {
+        // Unfollow
+        await Supabase.instance.client
+            .from('followers')
+            .delete()
+            .eq('follower_id', user.id)
+            .eq('followed_id', uploaderId);
+
+        setState(() {
+          _isFollowing = false;
+        });
+      } else {
+        // Follow
+        await Supabase.instance.client.from('followers').insert({
+          'follower_id': user.id,
+          'followed_id': uploaderId,
+          'followed_at': DateTime.now().toIso8601String(),
+        });
+
+        setState(() {
+          _isFollowing = true;
+        });
+      }
+    } catch (e) {
+      print('Erreur lors du follow/unfollow: $e');
+    }
+  }
+
+  void _showCommentsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF23242B),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 8,
-                      top: 16,
-                      bottom: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Commentaires',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream:
-                          FirebaseFirestore.instance
-                              .collection('videos')
-                              .doc(_videoId)
-                              .collection('comments')
-                              .orderBy('createdAt', descending: true)
-                              .snapshots(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFC34E00),
-                            ),
-                          );
-                        }
-                        final comments = snapshot.data!.docs;
-                        if (comments.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'Aucun commentaire',
-                              style: TextStyle(color: Colors.white54),
-                            ),
-                          );
-                        }
-                        return ListView.builder(
-                          itemCount: comments.length,
-                          itemBuilder: (context, index) {
-                            final data =
-                                comments[index].data() as Map<String, dynamic>;
-                            return ListTile(
-                              leading: CircleAvatar(child: Icon(Icons.person)),
-                              title: Text(
-                                data['username'] ?? 'Utilisateur',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              subtitle: Text(
-                                data['text'] ?? '',
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+        return CommentsModal(video: widget.video);
       },
     );
   }
@@ -645,8 +555,13 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
               ),
               // Bouton commentaire
               IconButton(
-                icon: Icon(Icons.comment, color: Colors.white, size: 32),
-                onPressed: _showCommentsModal,
+                icon: SvgPicture.asset(
+                  'assets/icons/message_circle_more.svg',
+                  width: 32,
+                  height: 32,
+                  color: Colors.white,
+                ),
+                onPressed: () => _showCommentsModal(context),
               ),
             ],
           ),
@@ -666,24 +581,25 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProfileScreen(
-                            uid: widget.video['uid'],
-                          ),
+                          builder:
+                              (context) =>
+                                  ProfileScreen(uid: widget.video['uid']),
                         ),
                       );
                     },
-                    child: _isLoadingUploader
-                        ? CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.grey[700],
-                        )
-                        : CircleAvatar(
-                          radius: 18,
-                          backgroundImage: NetworkImage(
-                            _uploaderData?['profilePic'] ??
-                                'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
-                          ),
-                        ),
+                    child:
+                        _isLoadingUploader
+                            ? CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.grey[700],
+                            )
+                            : CircleAvatar(
+                              radius: 18,
+                              backgroundImage: NetworkImage(
+                                _uploaderData?['profilepic'] ??
+                                    'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff',
+                              ),
+                            ),
                   ),
                   SizedBox(width: 10),
                   GestureDetector(
@@ -691,9 +607,9 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProfileScreen(
-                            uid: widget.video['uid'],
-                          ),
+                          builder:
+                              (context) =>
+                                  ProfileScreen(uid: widget.video['uid']),
                         ),
                       );
                     },
@@ -710,7 +626,7 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                   ),
                   SizedBox(width: 8),
                   if (!_isLoadingUploader &&
-                      FirebaseAuth.instance.currentUser?.uid !=
+                      Supabase.instance.client.auth.currentUser?.id !=
                           widget.video['uid'])
                     GestureDetector(
                       onTap: _toggleFollow,
@@ -745,67 +661,315 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
             ],
           ),
         ),
-        // Champ de saisie commentaire en bas
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Container(
-            margin: EdgeInsets.only(left: 8, right: 8, bottom: 8),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Color(0xFF23242B),
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: InputDecoration(
-                      hintText: 'Commenter...',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                _isSendingComment
-                    ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFFC34E00),
-                      ),
-                    )
-                    : IconButton(
-                      icon: Icon(Icons.send, color: Color(0xFFC34E00)),
-                      onPressed: _addComment,
-                    ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }
 }
 
-class _SvgActionButton extends StatelessWidget {
-  final String svg;
+class CommentsModal extends StatefulWidget {
+  final Map<String, dynamic> video;
+
+  const CommentsModal({required this.video, Key? key}) : super(key: key);
+
+  @override
+  State<CommentsModal> createState() => _CommentsModalState();
+}
+
+class _CommentsModalState extends State<CommentsModal> {
+  final TextEditingController _commentController = TextEditingController();
+  List<Map<String, dynamic>> _comments = [];
+  bool _isLoading = true;
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchComments();
+  }
+
+  Future<void> _fetchComments() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('video_comments')
+          .select('*, users(username, profilepic)')
+          .eq('video_id', widget.video['id'])
+          .order('created_at', ascending: false);
+
+      setState(() {
+        _comments = List<Map<String, dynamic>>.from(response);
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des commentaires: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addComment() async {
+    if (widget.video['id'] == null || _commentController.text.trim().isEmpty)
+      return;
+    setState(() {
+      _isSending = true;
+    });
+    final commentText = _commentController.text.trim();
+    await VideoInteractionService.addComment(
+      widget.video['id'],
+      commentText,
+      widget.video['commentscount'] ?? 0,
+    );
+    _commentController.clear();
+    setState(() {
+      _isSending = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Color(0xFF23242B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Text(
+                      '${_comments.length} commentaires',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              // Liste des commentaires
+              Expanded(
+                child:
+                    _isLoading
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFC34E00),
+                          ),
+                        )
+                        : _comments.isEmpty
+                        ? Center(
+                          child: Text(
+                            'Aucun commentaire',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        )
+                        : ListView.builder(
+                          controller: scrollController,
+                          itemCount: _comments.length,
+                          itemBuilder: (context, index) {
+                            final comment = _comments[index];
+                            final user =
+                                comment['users'] as Map<String, dynamic>?;
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundImage: NetworkImage(
+                                      user?['profilepic'] ??
+                                          'https://ui-avatars.com/api/?name=User&background=23242B&color=fff',
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          user?['username'] ?? 'Utilisateur',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          comment['text'] ?? '',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.favorite_border,
+                                      color: Colors.white54,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {},
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+              ),
+              // Champ de saisie en bas
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Ajouter un commentaire...',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFF262A34),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    _isSending
+                        ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFC34E00),
+                          ),
+                        )
+                        : IconButton(
+                          icon: Icon(Icons.send, color: Color(0xFFC34E00)),
+                          onPressed: _addComment,
+                        ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ActionButton extends StatefulWidget {
+  final IconData? icon;
+  final Widget? iconWidget;
+  final IconData? activeIcon;
   final int count;
-  const _SvgActionButton({required this.svg, required this.count});
+  final bool isActive;
+  final VoidCallback onTap;
+  final Color? activeColor;
+  final String? videoId;
+
+  const _ActionButton({
+    this.icon,
+    this.iconWidget,
+    this.activeIcon,
+    required this.count,
+    required this.onTap,
+    this.isActive = false,
+    this.activeColor,
+    this.videoId,
+  });
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 150),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.2).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward().then((_) => _controller.reverse());
+    widget.onTap();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SvgPicture.string(svg, color: Colors.white, width: 32, height: 32),
+        GestureDetector(
+          onTap: _handleTap,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child:
+                widget.iconWidget ??
+                Icon(
+                  widget.isActive && widget.activeIcon != null
+                      ? widget.activeIcon
+                      : widget.icon,
+                  color:
+                      widget.isActive
+                          ? (widget.activeColor ?? Color(0xFFC34E00))
+                          : Colors.white,
+                  size: 32,
+                ),
+          ),
+        ),
         SizedBox(height: 2),
         Text(
-          count >= 1000
-              ? '${(count / 1000).toStringAsFixed(1)}K'
-              : count.toString(),
+          widget.count >= 1000
+              ? '${(widget.count / 1000).toStringAsFixed(1)}K'
+              : widget.count.toString(),
           style: TextStyle(color: Colors.white, fontSize: 13),
         ),
       ],

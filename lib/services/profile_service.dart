@@ -1,17 +1,15 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as path;
 
 class ProfileService {
-  /// Upload une photo de profil sur Supabase Storage et met à jour Firestore.
+  /// Upload une photo de profil sur Supabase Storage et met à jour la table 'users' dans Supabase.
   static Future<String> uploadProfilePicture({
     required File file,
-    required User user,
+    required supabase.User user,
   }) async {
     final fileName =
-        '${user.uid}_${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+        '${user.id}_${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
     final storageResponse = await supabase.Supabase.instance.client.storage
         .from('profile_pics')
         .upload(
@@ -25,10 +23,11 @@ class ProfileService {
     final publicUrl = supabase.Supabase.instance.client.storage
         .from('profile_pics')
         .getPublicUrl(fileName);
-    // Met à jour Firestore
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'profilePic': publicUrl,
-    });
+    // Met à jour la table 'users' dans Supabase
+    await supabase.Supabase.instance.client
+        .from('users')
+        .update({'profilepic': publicUrl})
+        .eq('id', user.id);
     return publicUrl;
   }
 }

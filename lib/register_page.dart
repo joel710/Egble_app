@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'privacy_policy_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -285,19 +283,21 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       try {
-        UserCredential cred = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text.trim(),
-            );
-        // Synchronisation avec Supabase
+        // Inscription avec Supabase
         final supabaseResponse = await Supabase.instance.client.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
         if (supabaseResponse.user == null) {
-          print('Erreur création Supabase : ${supabaseResponse.toString()}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors de la création du compte.')),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
         }
+        final userId = supabaseResponse.user!.id;
         // Stockage sécurisé pour reconnexion automatique
         final storage = FlutterSecureStorage();
         await storage.write(
@@ -308,32 +308,33 @@ class _RegisterPageState extends State<RegisterPage> {
           key: 'user_password',
           value: _passwordController.text.trim(),
         );
-        // Enregistrement Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(cred.user!.uid)
-            .set({
-              'username': _nameController.text.trim(),
-              'bio': '',
-              'profilePic':
-                  'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
-              'abonnes': 0,
-              'abonnesCount': 0,
-              'videosCount': 0,
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+        // Création du profil utilisateur dans la table 'users' de Supabase
+        await Supabase.instance.client.from('users').insert({
+          'id': userId,
+          'username': _nameController.text.trim(),
+          'bio': '',
+          'profilePic':
+              'https://ui-avatars.com/api/?name=${Uri.encodeComponent(_nameController.text.trim())}&background=23242B&color=fff',
+          'createdAt': DateTime.now().toIso8601String(),
+        });
         // Inscription réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
-      } on FirebaseAuthException catch (e) {
+      } on AuthException catch (e) {
         String message = 'Erreur inconnue';
-        if (e.code == 'email-already-in-use') {
+        if (e.statusCode == '400' && e.message.contains('already registered')) {
           message = 'Cet email est déjà utilisé.';
-        } else if (e.code == 'weak-password') {
+        } else if (e.message.contains('weak password')) {
           message = 'Le mot de passe est trop faible.';
+        } else {
+          message = e.message;
         }
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur : ${e.toString()}')));
       } finally {
         setState(() {
           _isLoading = false;

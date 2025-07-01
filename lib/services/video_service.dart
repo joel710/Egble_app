@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path/path.dart' as path;
 
@@ -47,15 +46,16 @@ class VideoService {
         .from('videos')
         .getPublicUrl(fileName);
 
-    // Enregistrement Firestore
-    await FirebaseFirestore.instance.collection('videos').add({
+    // Enregistrement Supabase
+    await supabase.Supabase.instance.client.from('videos').insert({
       'uid': user.id,
-      'videoUrl': publicUrl,
+      'videourl': publicUrl,
       'caption': caption,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdat': DateTime.now().toIso8601String(),
       'duration': duration.inSeconds,
-      'likesCount': 0,
-      'commentsCount': 0,
+      'likescount': 0,
+      'commentscount': 0,
+      // 'thumbnailurl': ... // si tu as une miniature
     });
 
     return publicUrl;

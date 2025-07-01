@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
@@ -172,10 +171,6 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
         // Connexion à Supabase
         final supabaseResponse = await Supabase.instance.client.auth
             .signInWithPassword(
@@ -183,20 +178,31 @@ class _LoginPageState extends State<LoginPage> {
               password: _passwordController.text.trim(),
             );
         if (supabaseResponse.user == null) {
-          print('Erreur connexion Supabase : [${supabaseResponse.toString()}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors de la connexion.')),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
         }
         // Connexion réussie, redirige vers le menu
         Navigator.pushReplacementNamed(context, '/menu');
-      } on FirebaseAuthException catch (e) {
+      } on AuthException catch (e) {
         String message = 'Erreur inconnue';
-        if (e.code == 'user-not-found') {
-          message = 'Aucun utilisateur trouvé pour cet email.';
-        } else if (e.code == 'wrong-password') {
-          message = 'Mot de passe incorrect.';
+        if (e.statusCode == '400' &&
+            e.message.contains('Invalid login credentials')) {
+          message = 'Email ou mot de passe incorrect.';
+        } else {
+          message = e.message;
         }
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur : ${e.toString()}')));
       } finally {
         setState(() {
           _isLoading = false;

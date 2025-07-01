@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'nav_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'services/profile_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'menu_page.dart';
 import 'upload.dart';
 import 'video_scroll_page.dart';
@@ -33,16 +31,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _userVideos = [];
   bool _isLoadingVideos = true;
 
+  bool _isFollowing = false;
+
+  int abonnes = 0;
+
   bool get isCurrentUser {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return false;
-    return (widget.uid == null || widget.uid == user.uid);
+    return (widget.uid == null || widget.uid == user.id);
   }
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
+    _checkIfFollowing();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -52,22 +55,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       String? userId = widget.uid;
       if (userId == null) {
-        final user = FirebaseAuth.instance.currentUser;
+        final user = Supabase.instance.client.auth.currentUser;
         if (user == null) throw Exception('Utilisateur non connecté.');
-        userId = user.uid;
+        userId = user.id;
       }
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userId)
-              .get();
-      if (doc.exists) {
-        setState(() {
-          _userData = doc.data();
-          _profilePicUrl = _userData?['profilePic'];
-        });
-        await _fetchUserVideos(userId);
-      }
+      final response =
+          await Supabase.instance.client
+              .from('users')
+              .select()
+              .eq('id', userId)
+              .single();
+      // Compte dynamiquement les abonnés avec la méthode count de Supabase
+      final countRes = await Supabase.instance.client
+          .from('followers')
+          .select('id')
+          .eq('followed_id', userId);
+      final abonnesCount = countRes is List ? countRes.length : 0;
+      setState(() {
+        _userData = response;
+        _profilePicUrl = _userData?['profilepic'];
+        abonnes = abonnesCount;
+      });
+      await _fetchUserVideos(userId);
     } catch (e) {
       // Optionnel : afficher une erreur
     } finally {
@@ -81,17 +90,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _isLoadingVideos = true;
     });
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('videos')
-            .where('uid', isEqualTo: uid)
-            .orderBy('createdAt', descending: true)
-            .get();
+    final response = await Supabase.instance.client
+        .from('videos')
+        .select()
+        .eq('uid', uid)
+        .order('createdat', ascending: false);
     setState(() {
-      _userVideos =
-          snapshot.docs
-              .map((doc) => doc.data() as Map<String, dynamic>)
-              .toList();
+      _userVideos = List<Map<String, dynamic>>.from(response);
       _isLoadingVideos = false;
     });
   }
@@ -107,13 +112,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isUploadingPic = true;
       });
       try {
-        final user = FirebaseAuth.instance.currentUser;
+        final user = Supabase.instance.client.auth.currentUser;
         if (user == null) throw Exception('Utilisateur non connecté.');
         final file = File(picked.path);
-        final url = await ProfileService.uploadProfilePicture(
-          file: file,
-          user: user,
-        );
+        // Upload sur Supabase Storage
+        final fileName =
+            '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final storageResponse = await Supabase.instance.client.storage
+            .from('profile-pics')
+            .upload(
+              fileName,
+              file,
+              fileOptions: const FileOptions(upsert: true),
+            );
+        if (storageResponse.isEmpty) throw Exception('Erreur upload Supabase');
+        final url = Supabase.instance.client.storage
+            .from('profile_pics')
+            .getPublicUrl(fileName);
+        // Mise à jour du profil dans la table users
+        await Supabase.instance.client
+            .from('users')
+            .update({'profilepic': url})
+            .eq('id', user.id);
         setState(() {
           _profilePicUrl = url;
           _newProfilePic = file;
@@ -250,15 +270,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () async {
-                        final user = FirebaseAuth.instance.currentUser;
+                        final user = Supabase.instance.client.auth.currentUser;
                         if (user == null) return;
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user.uid)
+                        await Supabase.instance.client
+                            .from('users')
                             .update({
                               'username': _nameEditController.text.trim(),
                               'bio': _bioEditController.text.trim(),
-                            });
+                            })
+                            .eq('id', user.id);
                         await _fetchUserProfile();
                         Navigator.pop(context);
                         setState(() {});
@@ -291,6 +311,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _checkIfFollowing() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null || widget.uid == null) return;
+    final response =
+        await Supabase.instance.client
+            .from('followers')
+            .select()
+            .eq('follower_id', user.id)
+            .eq('followed_id', widget.uid!)
+            .maybeSingle();
+    setState(() {
+      _isFollowing = response != null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoadingProfile) {
@@ -305,9 +340,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bio = _userData?['bio'] ?? 'Aucune bio';
     final profilePic =
         _profilePicUrl ??
-        _userData?['profilePic'] ??
+        _userData?['profilepic'] ??
         'https://ui-avatars.com/api/?name=Egble&background=23242B&color=fff';
-    final abonnes = _userData?['abonnes'] ?? 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(isCurrentUser ? 'Mon Profil' : 'Profil de $username'),
@@ -365,34 +399,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (!isCurrentUser)
                       ElevatedButton(
                         onPressed: () async {
-                          // Gestion follow/unfollow
-                          final user = FirebaseAuth.instance.currentUser;
+                          final user =
+                              Supabase.instance.client.auth.currentUser;
                           if (user == null || widget.uid == null) return;
-                          final followRef = FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(widget.uid)
-                              .collection('followers')
-                              .doc(user.uid);
-                          final uploaderRef = FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(widget.uid);
-                          final doc = await followRef.get();
-                          if (doc.exists) {
-                            await followRef.delete();
-                            await uploaderRef.update({
-                              'abonnes': FieldValue.increment(-1),
-                            });
-                            setState(() {});
+                          if (_isFollowing) {
+                            // Unfollow
+                            await Supabase.instance.client
+                                .from('followers')
+                                .delete()
+                                .eq('follower_id', user.id)
+                                .eq('followed_id', widget.uid!);
                           } else {
-                            await followRef.set({
-                              'followedAt': FieldValue.serverTimestamp(),
-                            });
-                            await uploaderRef.update({
-                              'abonnes': FieldValue.increment(1),
-                            });
-                            setState(() {});
+                            // Follow
+                            await Supabase.instance.client
+                                .from('followers')
+                                .insert({
+                                  'follower_id': user.id,
+                                  'followed_id': widget.uid!,
+                                  'followed_at':
+                                      DateTime.now().toIso8601String(),
+                                });
                           }
                           await _fetchUserProfile();
+                          await _checkIfFollowing();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFFC34E00),
@@ -401,7 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: Text(
-                          'S’abonner',
+                          _isFollowing ? 'Se désabonner' : "S'abonner",
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
