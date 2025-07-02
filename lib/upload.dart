@@ -14,6 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'video_scroll_page.dart';
+import 'dart:typed_data';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});

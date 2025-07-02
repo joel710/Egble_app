@@ -13,6 +13,7 @@ class VideoService {
     required File file,
     required String caption,
     required supabase.User user,
+    String? thumbnailUrl,
   }) async {
     // Vérification taille
     final fileSize = await file.length();
@@ -55,7 +56,7 @@ class VideoService {
       'duration': duration.inSeconds,
       'likescount': 0,
       'commentscount': 0,
-      // 'thumbnailurl': ... // si tu as une miniature
+      if (thumbnailUrl != null) 'thumbnailurl': thumbnailUrl,
     });
 
     return publicUrl;
