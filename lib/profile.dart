@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'menu_page.dart';
 import 'upload.dart';
 import 'video_scroll_page.dart';
+import 'video_preview_player.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? uid;
@@ -501,7 +502,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(thumbnail, fit: BoxFit.cover),
+                  child: _VideoPreviewPlayer(videoUrl: video['videourl']),
                 ),
               );
             }, childCount: _userVideos.length),
