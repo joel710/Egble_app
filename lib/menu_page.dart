@@ -7,6 +7,7 @@ import 'upload.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 import 'package:video_player/video_player.dart';
+import 'video_preview_player.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -163,7 +164,7 @@ class _MenuPageState extends State<MenuPage> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: _VideoPreviewPlayer(
+                                  child: VideoPreviewPlayer(
                                     videoUrl: video['videourl'],
                                   ),
                                 ),

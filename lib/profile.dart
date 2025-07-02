@@ -502,7 +502,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: _VideoPreviewPlayer(videoUrl: video['videourl']),
+                  child: VideoPreviewPlayer(videoUrl: video['videourl']),
                 ),
               );
             }, childCount: _userVideos.length),
