@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'video_scroll_page.dart';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({super.key});
@@ -464,6 +465,12 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Vidéo uploadée avec succès !')));
+      // Redirection vers la page de scroll vidéo
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const VideoScrollPage()),
+        (route) => false,
+      );
       setState(() {
         _selectedVideo = null;
         _selectedVideoWeb = null;
