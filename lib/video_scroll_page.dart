@@ -435,7 +435,8 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
         // Infos vidéo + uploader
         Positioned(
           left: 16,
-          bottom: 40,
+          right: 16,
+          bottom: 80,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -518,11 +519,17 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                 ],
               ),
               SizedBox(height: 8),
-              Text(
-                widget.video['caption'] ?? '',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Container(
+                padding: EdgeInsets.only(bottom: 8),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width - 100,
+                ),
+                child: Text(
+                  widget.video['caption'] ?? '',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
