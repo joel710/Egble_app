@@ -136,20 +136,25 @@ class _MenuPageState extends State<MenuPage> {
                         )
                         : MasonryGridView.count(
                           crossAxisCount: 2,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 1,
+                          crossAxisSpacing: 1,
                           physics: BouncingScrollPhysics(),
-                          padding: EdgeInsets.only(bottom: 16),
+                          padding: EdgeInsets.only(bottom: 1),
                           itemCount: _videos.length,
                           itemBuilder: (context, index) {
                             final video = _videos[index];
-                            final title = video['caption'] ?? 'Vidéo';
                             final thumbnail =
                                 video['thumbnailurl'] ??
                                 'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
-                            return SizedBox(
-                              height: (200 + Random().nextInt(60)).toDouble(),
-                              child: _buildBattleCard(title, thumbnail, video),
+                            return Container(
+                              margin: EdgeInsets.all(0.5),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.black,
+                              ),
+                              child: _VideoPreviewPlayer(
+                                videoUrl: video['videourl'],
+                              ),
                             );
                           },
                         ),
@@ -161,38 +166,6 @@ class _MenuPageState extends State<MenuPage> {
       bottomNavigationBar: CustomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavBarTap,
-      ),
-    );
-  }
-
-  Widget _buildBattleCard(
-    String title,
-    String imageUrl,
-    Map<String, dynamic> video,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    VideoScrollPage(initialIndex: _videos.indexOf(video)),
-          ),
-        );
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _VideoPreviewPlayer(videoUrl: video['videourl']),
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(title, style: TextStyle(color: Colors.white)),
-        ],
       ),
     );
   }
