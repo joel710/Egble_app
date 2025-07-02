@@ -389,40 +389,36 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: Icon(
-                  _isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: _isLiked ? Colors.red : Colors.white,
-                  size: 32,
-                ),
-                onPressed: _toggleLike,
+              // Like
+              _ActionButton(
+                icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                activeIcon: Icons.favorite,
+                isActive: _isLiked,
+                activeColor: Colors.red,
+                count: _likesCount,
+                onTap: _toggleLike,
               ),
-              SizedBox(height: 4),
-              Text(
-                _likesCount >= 1000
-                    ? '${(_likesCount / 1000).toStringAsFixed(1)}K'
-                    : _likesCount.toString(),
-                style: TextStyle(color: Colors.white, fontSize: 13),
-              ),
-              // Bouton commentaire
-              IconButton(
-                icon: SvgPicture.asset(
+              SizedBox(height: 18),
+              // Commentaire
+              _ActionButton(
+                iconWidget: SvgPicture.asset(
                   'assets/icons/message_circle_more.svg',
                   width: 32,
                   height: 32,
                   color: Colors.white,
                 ),
-                onPressed: () => _showCommentsModal(context),
+                count: widget.video['commentscount'] ?? 0,
+                onTap: () => _showCommentsModal(context),
               ),
-              // Bouton partage (send)
-              IconButton(
-                icon: Icon(Icons.send, color: Colors.white, size: 32),
-                onPressed: () {
-                  // TODO: Ajoute ici la logique de partage (ex: Share.share(widget.video['videourl']))
+              SizedBox(height: 18),
+              // Partage
+              _ActionButton(
+                icon: Icons.send,
+                count:
+                    0, // Remplacer par un vrai compteur si tu veux compter les partages
+                onTap: () {
                   final url = widget.video['videourl'] ?? '';
                   if (url.isNotEmpty) {
-                    // Tu peux utiliser le package 'share_plus' pour partager
-                    // Share.share(url);
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text('Lien copié: $url')));
@@ -811,7 +807,12 @@ class _CommentsModalState extends State<CommentsModal> {
               ),
               // Champ de saisie en bas
               Container(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+                  top: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Color(0xFF1A1A1A),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
