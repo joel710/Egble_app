@@ -143,17 +143,30 @@ class _MenuPageState extends State<MenuPage> {
                           itemCount: _videos.length,
                           itemBuilder: (context, index) {
                             final video = _videos[index];
-                            final thumbnail =
-                                video['thumbnailurl'] ??
-                                'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
-                            return Container(
-                              margin: EdgeInsets.all(0.5),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.black,
-                              ),
-                              child: _VideoPreviewPlayer(
-                                videoUrl: video['videourl'],
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => VideoScrollPage(
+                                          initialIndex: index,
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: EdgeInsets.all(0.5),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.black,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: _VideoPreviewPlayer(
+                                    videoUrl: video['videourl'],
+                                  ),
+                                ),
                               ),
                             );
                           },
