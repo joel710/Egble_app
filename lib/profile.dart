@@ -353,6 +353,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icon(Icons.edit, color: Color(0xFFC34E00)),
                     onPressed: _showEditProfileModal,
                   ),
+                  IconButton(
+                    icon: Icon(Icons.logout, color: Colors.redAccent),
+                    tooltip: 'Se déconnecter',
+                    onPressed: () async {
+                      await Supabase.instance.client.auth.signOut();
+                      if (mounted) {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
+                      }
+                    },
+                  ),
                 ]
                 : null,
       ),
