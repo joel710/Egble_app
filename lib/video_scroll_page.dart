@@ -157,7 +157,14 @@ class _VideoScrollPageState extends State<VideoScrollPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return CommentsModal(video: video);
+        return CommentsModal(
+          video: video,
+          onCommentAdded: () {
+            setState(() {
+              video['commentscount'] = (video['commentscount'] ?? 0) + 1;
+            });
+          },
+        );
       },
     );
   }
@@ -352,17 +359,6 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
     }
   }
 
-  void _showCommentsModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return CommentsModal(video: widget.video);
-      },
-    );
-  }
-
   @override
   void dispose() {
     _controller?.dispose();
@@ -408,7 +404,24 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                   color: Colors.white,
                 ),
                 count: widget.video['commentscount'] ?? 0,
-                onTap: () => _showCommentsModal(context),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) {
+                      return CommentsModal(
+                        video: widget.video,
+                        onCommentAdded: () {
+                          setState(() {
+                            widget.video['commentscount'] =
+                                (widget.video['commentscount'] ?? 0) + 1;
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               SizedBox(height: 18),
               // Partage
@@ -614,8 +627,10 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
 
 class CommentsModal extends StatefulWidget {
   final Map<String, dynamic> video;
+  final VoidCallback? onCommentAdded;
 
-  const CommentsModal({required this.video, Key? key}) : super(key: key);
+  const CommentsModal({required this.video, this.onCommentAdded, Key? key})
+    : super(key: key);
 
   @override
   State<CommentsModal> createState() => _CommentsModalState();
@@ -686,6 +701,7 @@ class _CommentsModalState extends State<CommentsModal> {
     } else {
       _commentController.clear();
       await _fetchComments();
+      if (widget.onCommentAdded != null) widget.onCommentAdded!();
     }
     setState(() {
       _isSending = false;

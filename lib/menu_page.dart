@@ -62,92 +62,100 @@ class _MenuPageState extends State<MenuPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF181A20),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
-        child: Column(
-          children: [
-            // Champ de recherche
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Search',
-                prefixIcon: Icon(Icons.search, color: Colors.white54),
-                filled: true,
-                fillColor: Color(0xFF262A34),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
+          child: Column(
+            children: [
+              // Champ de recherche
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: Icon(Icons.search, color: Colors.white54),
+                  filled: true,
+                  fillColor: Color(0xFF262A34),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  hintStyle: TextStyle(color: Colors.white54),
                 ),
-                hintStyle: TextStyle(color: Colors.white54),
+                style: TextStyle(color: Colors.white),
               ),
-              style: TextStyle(color: Colors.white),
-            ),
-            SizedBox(height: 8),
-            // Boutons Actus et LIVE
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF262A34),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  ),
-                  child: Text('Actus', style: TextStyle(color: Colors.white)),
-                ),
-                SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF262A34),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  ),
-                  child: Text('LIVE', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            // Grille d'images
-            Expanded(
-              child:
-                  _isLoading
-                      ? Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFC34E00),
-                        ),
-                      )
-                      : _videos.isEmpty
-                      ? Center(
-                        child: Text(
-                          'Aucune vidéo disponible',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      )
-                      : MasonryGridView.count(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        physics: BouncingScrollPhysics(),
-                        padding: EdgeInsets.only(bottom: 16),
-                        itemCount: _videos.length,
-                        itemBuilder: (context, index) {
-                          final video = _videos[index];
-                          final title = video['caption'] ?? 'Vidéo';
-                          final thumbnail =
-                              video['thumbnailurl'] ??
-                              'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
-                          return SizedBox(
-                            height: (200 + Random().nextInt(60)).toDouble(),
-                            child: _buildBattleCard(title, thumbnail, video),
-                          );
-                        },
+              SizedBox(height: 8),
+              // Boutons Actus et LIVE
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF262A34),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
                       ),
-            ),
-          ],
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                    ),
+                    child: Text('Actus', style: TextStyle(color: Colors.white)),
+                  ),
+                  SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF262A34),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                    ),
+                    child: Text('LIVE', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              // Grille d'images
+              Expanded(
+                child:
+                    _isLoading
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFC34E00),
+                          ),
+                        )
+                        : _videos.isEmpty
+                        ? Center(
+                          child: Text(
+                            'Aucune vidéo disponible',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        )
+                        : MasonryGridView.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          physics: BouncingScrollPhysics(),
+                          padding: EdgeInsets.only(bottom: 16),
+                          itemCount: _videos.length,
+                          itemBuilder: (context, index) {
+                            final video = _videos[index];
+                            final title = video['caption'] ?? 'Vidéo';
+                            final thumbnail =
+                                video['thumbnailurl'] ??
+                                'https://ui-avatars.com/api/?name=Video&background=23242B&color=fff';
+                            return SizedBox(
+                              height: (200 + Random().nextInt(60)).toDouble(),
+                              child: _buildBattleCard(title, thumbnail, video),
+                            );
+                          },
+                        ),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: CustomNavBar(
