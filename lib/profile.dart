@@ -127,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             );
         if (storageResponse.isEmpty) throw Exception('Erreur upload Supabase');
         final url = Supabase.instance.client.storage
-            .from('profile_pics')
+            .from('profile-pics')
             .getPublicUrl(fileName);
         // Mise à jour du profil dans la table users
         await Supabase.instance.client

@@ -381,7 +381,7 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
         // Overlays TikTok (profil, likes, commentaires, etc.)
         Positioned(
           right: 16,
-          bottom: 120,
+          bottom: 180,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -426,9 +426,8 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
               SizedBox(height: 18),
               // Partage
               _ActionButton(
-                icon: Icons.send,
-                count:
-                    0, // Remplacer par un vrai compteur si tu veux compter les partages
+                icon: LucideIcons.send,
+                count: 0,
                 onTap: () {
                   final url = widget.video['videourl'] ?? '';
                   if (url.isNotEmpty) {
