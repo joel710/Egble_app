@@ -329,33 +329,33 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
     final user = Supabase.instance.client.auth.currentUser;
     final uploaderId = widget.video['uid'];
     if (user == null || uploaderId == null) return;
-
+    setState(() {
+      _isFollowing = !_isFollowing;
+    });
     try {
       if (_isFollowing) {
-        // Unfollow
-        await Supabase.instance.client
-            .from('followers')
-            .delete()
-            .eq('follower_id', user.id)
-            .eq('followed_id', uploaderId);
-
-        setState(() {
-          _isFollowing = false;
-        });
-      } else {
         // Follow
         await Supabase.instance.client.from('followers').insert({
           'follower_id': user.id,
           'followed_id': uploaderId,
           'followed_at': DateTime.now().toIso8601String(),
         });
-
-        setState(() {
-          _isFollowing = true;
-        });
+      } else {
+        // Unfollow
+        await Supabase.instance.client
+            .from('followers')
+            .delete()
+            .eq('follower_id', user.id)
+            .eq('followed_id', uploaderId);
       }
+      await _checkIfFollowing(uploaderId);
     } catch (e) {
-      print('Erreur lors du follow/unfollow: $e');
+      setState(() {
+        _isFollowing = !_isFollowing;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur lors du follow: $e')));
     }
   }
 

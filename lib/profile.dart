@@ -416,26 +416,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final user =
                               Supabase.instance.client.auth.currentUser;
                           if (user == null || widget.uid == null) return;
-                          if (_isFollowing) {
-                            // Unfollow
-                            await Supabase.instance.client
-                                .from('followers')
-                                .delete()
-                                .eq('follower_id', user.id)
-                                .eq('followed_id', widget.uid!);
-                          } else {
-                            // Follow
-                            await Supabase.instance.client
-                                .from('followers')
-                                .insert({
-                                  'follower_id': user.id,
-                                  'followed_id': widget.uid!,
-                                  'followed_at':
-                                      DateTime.now().toIso8601String(),
-                                });
+                          setState(() {
+                            _isFollowing = !_isFollowing;
+                          });
+                          try {
+                            if (_isFollowing) {
+                              // Follow
+                              await Supabase.instance.client
+                                  .from('followers')
+                                  .insert({
+                                    'follower_id': user.id,
+                                    'followed_id': widget.uid!,
+                                    'followed_at':
+                                        DateTime.now().toIso8601String(),
+                                  });
+                            } else {
+                              // Unfollow
+                              await Supabase.instance.client
+                                  .from('followers')
+                                  .delete()
+                                  .eq('follower_id', user.id)
+                                  .eq('followed_id', widget.uid!);
+                            }
+                            await _fetchUserProfile();
+                            await _checkIfFollowing();
+                          } catch (e) {
+                            setState(() {
+                              _isFollowing = !_isFollowing;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erreur lors du follow: $e'),
+                              ),
+                            );
                           }
-                          await _fetchUserProfile();
-                          await _checkIfFollowing();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFFC34E00),
