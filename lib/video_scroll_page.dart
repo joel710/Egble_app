@@ -334,12 +334,21 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
     });
     try {
       if (_isFollowing) {
-        // Follow
-        await Supabase.instance.client.from('followers').insert({
-          'follower_id': user.id,
-          'followed_id': uploaderId,
-          'followed_at': DateTime.now().toIso8601String(),
-        });
+        // Vérifie d'abord si la relation existe déjà
+        final existing =
+            await Supabase.instance.client
+                .from('followers')
+                .select()
+                .eq('follower_id', user.id)
+                .eq('followed_id', uploaderId)
+                .maybeSingle();
+        if (existing == null) {
+          await Supabase.instance.client.from('followers').insert({
+            'follower_id': user.id,
+            'followed_id': uploaderId,
+            'followed_at': DateTime.now().toIso8601String(),
+          });
+        }
       } else {
         // Unfollow
         await Supabase.instance.client
