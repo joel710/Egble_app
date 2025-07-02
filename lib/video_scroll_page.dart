@@ -634,12 +634,26 @@ class _CommentsModalState extends State<CommentsModal> {
     try {
       final response = await Supabase.instance.client
           .from('video_comments')
-          .select('*, users(username, profilepic)')
+          .select()
           .eq('video_id', widget.video['id'])
           .order('created_at', ascending: false);
 
+      List<Map<String, dynamic>> comments = List<Map<String, dynamic>>.from(
+        response,
+      );
+      // Pour chaque commentaire, on récupère les infos utilisateur
+      for (var comment in comments) {
+        final userId = comment['user_id'];
+        final userData =
+            await Supabase.instance.client
+                .from('users')
+                .select('username, profilepic')
+                .eq('id', userId)
+                .maybeSingle();
+        comment['user'] = userData;
+      }
       setState(() {
-        _comments = List<Map<String, dynamic>>.from(response);
+        _comments = comments;
         _isLoading = false;
       });
     } catch (e) {
@@ -732,7 +746,7 @@ class _CommentsModalState extends State<CommentsModal> {
                           itemBuilder: (context, index) {
                             final comment = _comments[index];
                             final user =
-                                comment['users'] as Map<String, dynamic>?;
+                                comment['user'] as Map<String, dynamic>?;
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(
