@@ -414,6 +414,21 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
                 ),
                 onPressed: () => _showCommentsModal(context),
               ),
+              // Bouton partage (send)
+              IconButton(
+                icon: Icon(Icons.send, color: Colors.white, size: 32),
+                onPressed: () {
+                  // TODO: Ajoute ici la logique de partage (ex: Share.share(widget.video['videourl']))
+                  final url = widget.video['videourl'] ?? '';
+                  if (url.isNotEmpty) {
+                    // Tu peux utiliser le package 'share_plus' pour partager
+                    // Share.share(url);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Lien copié: $url')));
+                  }
+                },
+              ),
             ],
           ),
         ),
@@ -512,8 +527,85 @@ class _VideoPlayerFeedItemState extends State<_VideoPlayerFeedItem> {
             ],
           ),
         ),
+        // Champ de commentaire discret en bas
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            margin: EdgeInsets.only(left: 12, right: 12, bottom: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white24, width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    style: TextStyle(fontSize: 13, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Ajouter un commentaire...',
+                      border: InputBorder.none,
+                      isDense: true,
+                      hintStyle: TextStyle(fontSize: 12, color: Colors.white54),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.emoji_emotions_outlined,
+                    color: Colors.white38,
+                    size: 20,
+                  ),
+                  onPressed: () {},
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send, color: Color(0xFFC34E00), size: 20),
+                  onPressed: _addComment,
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
+  }
+
+  void _addComment() async {
+    if (_videoId == null || _commentController.text.trim().isEmpty) return;
+    setState(() {
+      _isSendingComment = true;
+    });
+    final commentText = _commentController.text.trim();
+    final success = await VideoInteractionService.addComment(
+      _videoId!,
+      commentText,
+      widget.video['commentscount'] ?? 0,
+    );
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur lors de l'ajout du commentaire.")),
+      );
+    } else {
+      _commentController.clear();
+      setState(() {
+        // Incrémente localement le compteur de commentaires
+        widget.video['commentscount'] =
+            (widget.video['commentscount'] ?? 0) + 1;
+      });
+      // Optionnel : tu peux rafraîchir les commentaires si tu les affiches ici
+    }
+    setState(() {
+      _isSendingComment = false;
+    });
   }
 }
 
@@ -565,12 +657,19 @@ class _CommentsModalState extends State<CommentsModal> {
       _isSending = true;
     });
     final commentText = _commentController.text.trim();
-    await VideoInteractionService.addComment(
+    final success = await VideoInteractionService.addComment(
       widget.video['id'],
       commentText,
       widget.video['commentscount'] ?? 0,
     );
-    _commentController.clear();
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur lors de l'ajout du commentaire.")),
+      );
+    } else {
+      _commentController.clear();
+      await _fetchComments();
+    }
     setState(() {
       _isSending = false;
     });
